@@ -121,7 +121,7 @@ Triggers:
 - Weekly schedule (Monday, 03:17 UTC).
 - Manual `workflow_dispatch` with optional inputs:
   - `versions` (comma/space-separated list),
-  - `includePrereleaseLatestMajor` (include latest-major alpha/beta/rc in auto version selection),
+  - `includePrereleaseLatestMajor` (include all latest-major alpha/beta/rc in auto version selection),
   - `iterations`,
   - `iterationTimeMs`,
   - `forks`,
@@ -165,15 +165,17 @@ Design notes:
 
 Default scheduled versions are auto-resolved from Maven Central on every run:
 - include the latest patch from the latest 3 minors in each of the latest 2 major lines,
+- include the latest 2 prereleases from the latest major (RC-preferred),
+- include the latest snapshot from `https://maven.reposilite.com/snapshots`,
 - do not include older major lines by default,
 - minimum stable cutoff `>= 1.0.0`,
-- exclude prereleases unless `includePrereleaseLatestMajor=true`.
+- include all latest-major prereleases only when `includePrereleaseLatestMajor=true`.
 
 Fallback static list is `config/versions.txt`.
 You can refresh the fallback files with:
 ```sh
-python3 scripts/update_versions_from_maven.py --output config/versions.txt --minimum 1.0.0 --include-all-latest-majors 2 --latest-minors-per-major 3 --no-include-latest-per-major
-python3 scripts/update_versions_from_maven.py --output config/versions-prerelease.txt --minimum 1.0.0 --include-all-latest-majors 2 --latest-minors-per-major 3 --no-include-latest-per-major --include-prerelease-latest-major
+python3 scripts/update_versions_from_maven.py --output config/versions.txt --minimum 1.0.0 --include-all-latest-majors 2 --latest-minors-per-major 3 --no-include-latest-per-major --latest-prerelease-count 2 --include-latest-snapshot
+python3 scripts/update_versions_from_maven.py --output config/versions-prerelease.txt --minimum 1.0.0 --include-all-latest-majors 2 --latest-minors-per-major 3 --no-include-latest-per-major --include-prerelease-latest-major --include-latest-snapshot
 ```
 
 ## PR benchmarks

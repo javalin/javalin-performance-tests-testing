@@ -38,7 +38,7 @@ Modes:
 Options:
   -Mode <quick|weekly>                  Run preset (default: weekly)
   -Versions "<v1,v2 ...>"               Explicit versions (overrides mode defaults)
-  -IncludePrereleaseLatestMajor         Include alpha/beta/rc from latest major for auto version resolution
+  -IncludePrereleaseLatestMajor         Include all alpha/beta/rc from latest major for auto version resolution
   -Iterations <n>                       JMH warmup + measurement iterations
   -IterationTimeMs <n>                  JMH warmup + measurement time in ms
   -Forks <n>                            JMH forks
@@ -289,6 +289,8 @@ if (-not [string]::IsNullOrWhiteSpace($Versions)) {
             "--include-all-latest-majors", "2",
             "--latest-minors-per-major", "3",
             "--no-include-latest-per-major",
+            "--latest-prerelease-count", "2",
+            "--include-latest-snapshot",
             "--json"
         )
         if ($IncludePrereleaseLatestMajor.IsPresent) {

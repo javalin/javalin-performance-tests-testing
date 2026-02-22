@@ -2,6 +2,7 @@
 import argparse
 import json
 import math
+import re
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -342,34 +343,146 @@ def sorted_run_ids(run_metadata: Dict[str, dict]) -> List[str]:
     )
 
 
+def benchmark_group_label(benchmark: str) -> str:
+    short = benchmark.split(".")[-1]
+    mapping = [
+        ("hello", "Hello / Lifecycle"),
+        ("jsonSerialization", "JSON Serialization"),
+        ("payload", "Payload Size"),
+        ("staticFile", "Static File"),
+        ("routes", "Route Count"),
+    ]
+    for prefix, label in mapping:
+        if short.startswith(prefix):
+            return label
+    return short
+
+
+def table_header(include_benchmark: bool) -> str:
+    cells = []
+    if include_benchmark:
+        cells.append("<th>Benchmark</th>")
+    cells.extend(
+        [
+            "<th>Version</th>",
+            "<th>Winner</th>",
+            "<th>Latest Score</th>",
+            "<th>Score Error</th>",
+            "<th>Unit</th>",
+            "<th>Delta vs Prev %</th>",
+            "<th>Mean (last 8)</th>",
+            "<th>Stdev (last 8)</th>",
+            "<th>CV% (last 8)</th>",
+            "<th>Samples</th>",
+            "<th>Threads</th>",
+            "<th>Forks</th>",
+            "<th>Meas. Iter.</th>",
+            "<th>Meas. Time</th>",
+        ]
+    )
+    return "<tr>" + "".join(cells) + "</tr>"
+
+
+def render_summary_row(row: dict, include_benchmark: bool) -> str:
+    winner_badge = "<span class='winner-badge'>Best</span>" if row.get("isWinner") else ""
+    row_class = "winner-row" if row.get("isWinner") else ""
+    cells = []
+    if include_benchmark:
+        cells.append(f"<td>{escape(row['benchmark'])}</td>")
+    cells.extend(
+        [
+            f"<td>{escape(row['version'])}</td>",
+            f"<td>{winner_badge}</td>",
+            f"<td>{safe_float(row['latestScore'])}</td>",
+            f"<td>{safe_float(row['latestScoreError'])}</td>",
+            f"<td>{escape(row['scoreUnit'])}</td>",
+            f"<td>{safe_float(row['deltaVsPreviousPercent'], 2)}</td>",
+            f"<td>{safe_float(row['meanLast8'])}</td>",
+            f"<td>{safe_float(row['stdevLast8'])}</td>",
+            f"<td>{safe_float(row['cvLast8Percent'], 2)}</td>",
+            f"<td>{row['samples']}</td>",
+            f"<td>{row['threads'] if row['threads'] is not None else ''}</td>",
+            f"<td>{row['forks'] if row['forks'] is not None else ''}</td>",
+            f"<td>{row['measurementIterations'] if row['measurementIterations'] is not None else ''}</td>",
+            f"<td>{escape(row['measurementTime'] or '')}</td>",
+        ]
+    )
+    return "<tr class='" + row_class + "'>" + "".join(cells) + "</tr>"
+
+
 def summarize_table_rows(rows: List[dict]) -> str:
     if not rows:
         return "<tr><td colspan='15'>No data yet.</td></tr>"
 
     rendered = []
+    previous_benchmark = None
     for row in rows:
-        winner_badge = "<span class='winner-badge'>Best</span>" if row.get("isWinner") else ""
-        row_class = "winner-row" if row.get("isWinner") else ""
-        rendered.append(
-            "<tr class='" + row_class + "'>"
-            + f"<td>{escape(row['benchmark'])}</td>"
-            + f"<td>{escape(row['version'])}</td>"
-            + f"<td>{winner_badge}</td>"
-            + f"<td>{safe_float(row['latestScore'])}</td>"
-            + f"<td>{safe_float(row['latestScoreError'])}</td>"
-            + f"<td>{escape(row['scoreUnit'])}</td>"
-            + f"<td>{safe_float(row['deltaVsPreviousPercent'], 2)}</td>"
-            + f"<td>{safe_float(row['meanLast8'])}</td>"
-            + f"<td>{safe_float(row['stdevLast8'])}</td>"
-            + f"<td>{safe_float(row['cvLast8Percent'], 2)}</td>"
-            + f"<td>{row['samples']}</td>"
-            + f"<td>{row['threads'] if row['threads'] is not None else ''}</td>"
-            + f"<td>{row['forks'] if row['forks'] is not None else ''}</td>"
-            + f"<td>{row['measurementIterations'] if row['measurementIterations'] is not None else ''}</td>"
-            + f"<td>{escape(row['measurementTime'] or '')}</td>"
-            + "</tr>"
-        )
+        if row["benchmark"] != previous_benchmark:
+            rendered.append(
+                "<tr class='benchmark-divider'>"
+                + f"<td colspan='15'>{escape(benchmark_group_label(row['benchmark']))}: {escape(row['benchmark'])}</td>"
+                + "</tr>"
+            )
+        previous_benchmark = row["benchmark"]
+        rendered.append(render_summary_row(row, include_benchmark=True))
     return "\n".join(rendered)
+
+
+def benchmark_tab_id(benchmark: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", benchmark).strip("-").lower()
+    return f"benchmark-tab-{slug}"
+
+
+def render_benchmark_tabs(rows: List[dict]) -> str:
+    if not rows:
+        return "<p>No benchmark rows yet.</p>"
+
+    grouped: Dict[str, List[dict]] = {}
+    for row in rows:
+        grouped.setdefault(row["benchmark"], []).append(row)
+
+    benchmarks = sorted(grouped.keys())
+    buttons = []
+    panels = []
+
+    for index, benchmark in enumerate(benchmarks):
+        tab_id = benchmark_tab_id(benchmark)
+        short = benchmark.split(".")[-1]
+        title = f"{benchmark_group_label(benchmark)}: {short}"
+        active_class = " active" if index == 0 else ""
+        active_bool = "true" if index == 0 else "false"
+        hidden_attr = "" if index == 0 else " hidden"
+
+        buttons.append(
+            f"<button type='button' class='tab-button{active_class}' data-tab-button='{escape(tab_id)}' aria-selected='{active_bool}'>{escape(title)}</button>"
+        )
+
+        table_rows = "\n".join(render_summary_row(row, include_benchmark=False) for row in grouped[benchmark])
+        panels.append(
+            "<section class='tab-panel"
+            + active_class
+            + f"' data-tab-panel='{escape(tab_id)}'{hidden_attr}>"
+            + f"<h3>{escape(benchmark_group_label(benchmark))}: {escape(benchmark)}</h3>"
+            + "<div class='summary-wrap'>"
+            + "<table><thead>"
+            + table_header(include_benchmark=False)
+            + "</thead><tbody>"
+            + table_rows
+            + "</tbody></table>"
+            + "</div>"
+            + "</section>"
+        )
+
+    return (
+        "<section class='tab-shell'>"
+        + "<div class='tab-buttons'>"
+        + "".join(buttons)
+        + "</div>"
+        + "<div class='tab-panels'>"
+        + "".join(panels)
+        + "</div>"
+        + "</section>"
+    )
 
 
 def render_sidebar(
@@ -453,6 +566,7 @@ def build_html(
     mem = latest_runner.get("memory", {}) if latest_runner else {}
 
     table_rows = summarize_table_rows(rows)
+    benchmark_tabs_html = render_benchmark_tabs(rows)
     sidebar = render_sidebar(run_timeline, active_run_id, latest_run_id, root_rel)
 
     mode_title = "Latest cumulative report" if active_run_id is None else f"Snapshot for {active_run_id}"
@@ -494,12 +608,12 @@ def build_html(
       background: radial-gradient(circle at 0% 0%, #cfe4f7 0%, var(--bg) 42%);
     }}
     .layout {{
-      max-width: 1600px;
-      margin: 0 auto;
+      width: 100%;
+      margin: 0;
       display: grid;
       grid-template-columns: 270px minmax(0, 1fr);
       gap: 1rem;
-      padding: 1rem;
+      padding: 1rem 1.2rem;
     }}
     .sidebar {{ position: sticky; top: .8rem; height: fit-content; }}
     .sidebar-card {{
@@ -567,7 +681,39 @@ def build_html(
       overflow: auto;
       max-height: 64vh;
       background: var(--panel);
+      width: 100%;
     }}
+    .tab-shell {{
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: .75rem;
+      margin-bottom: .9rem;
+    }}
+    .tab-buttons {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: .65rem;
+    }}
+    .tab-button {{
+      border: 1px solid #b8d2e8;
+      background: #f4faff;
+      color: #21405e;
+      border-radius: 999px;
+      padding: .3rem .72rem;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }}
+    .tab-button.active {{
+      border-color: var(--accent);
+      background: #deeff8;
+      color: #173752;
+    }}
+    .tab-panel {{ display: none; }}
+    .tab-panel.active {{ display: block; }}
+    .tab-panel h3 {{ margin-bottom: .5rem; }}
     table {{ width: 100%; border-collapse: collapse; font-size: .87rem; }}
     th, td {{
       border-bottom: 1px solid var(--line);
@@ -579,6 +725,17 @@ def build_html(
     th {{ position: sticky; top: 0; background: #e9f3fb; z-index: 1; }}
     .winner-row {{ background: var(--winner-bg); }}
     .winner-row td:first-child {{ border-left: 4px solid var(--winner-border); }}
+    .benchmark-divider td {{
+      position: sticky;
+      top: 34px;
+      z-index: 1;
+      background: #dfeefa;
+      border-top: 2px solid #bdd4e8;
+      border-bottom: 1px solid #bdd4e8;
+      font-weight: 700;
+      color: #13314f;
+      white-space: normal;
+    }}
     .winner-badge {{
       display: inline-block;
       border: 1px solid var(--winner-border);
@@ -596,6 +753,12 @@ def build_html(
       border-radius: 10px;
       padding: .75rem;
       overflow-x: auto;
+    }}
+    .chart-card svg {{
+      width: 100%;
+      height: auto;
+      min-width: 960px;
+      display: block;
     }}
     footer {{ margin-top: .85rem; color: var(--muted); font-size: .84rem; }}
     @media (max-width: 1150px) {{
@@ -646,29 +809,16 @@ def build_html(
       <div class=\"summary-wrap\">
         <table>
           <thead>
-            <tr>
-              <th>Benchmark</th>
-              <th>Version</th>
-              <th>Winner</th>
-              <th>Latest Score</th>
-              <th>Score Error</th>
-              <th>Unit</th>
-              <th>Delta vs Prev %</th>
-              <th>Mean (last 8)</th>
-              <th>Stdev (last 8)</th>
-              <th>CV% (last 8)</th>
-              <th>Samples</th>
-              <th>Threads</th>
-              <th>Forks</th>
-              <th>Meas. Iter.</th>
-              <th>Meas. Time</th>
-            </tr>
+            {table_header(include_benchmark=True)}
           </thead>
           <tbody>
             {table_rows}
           </tbody>
         </table>
       </div>
+
+      <h2>Per-Benchmark Tables</h2>
+      {benchmark_tabs_html}
 
       <h2>Trend Charts</h2>
       <div class=\"chart-grid\">
@@ -678,6 +828,33 @@ def build_html(
       <footer>Higher score is better in throughput mode. Compare versions within the same benchmark row. CV% is stdev/mean over up to the last 8 samples.</footer>
     </main>
   </div>
+  <script>
+    (() => {{
+      const buttons = Array.from(document.querySelectorAll('[data-tab-button]'));
+      const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+      if (!buttons.length || !panels.length) {{
+        return;
+      }}
+
+      const setActive = (tabId) => {{
+        buttons.forEach((button) => {{
+          const active = button.dataset.tabButton === tabId;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-selected', active ? 'true' : 'false');
+        }});
+
+        panels.forEach((panel) => {{
+          const active = panel.dataset.tabPanel === tabId;
+          panel.classList.toggle('active', active);
+          panel.hidden = !active;
+        }});
+      }};
+
+      buttons.forEach((button) => {{
+        button.addEventListener('click', () => setActive(button.dataset.tabButton));
+      }});
+    }})();
+  </script>
 </body>
 </html>
 """

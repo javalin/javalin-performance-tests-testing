@@ -17,7 +17,7 @@ Modes:
 Options:
   --mode <quick|weekly>                  Run preset (default: weekly)
   --versions "<v1,v2 ...>"               Explicit versions (overrides mode defaults)
-  --include-prerelease-latest-major      Include alpha/beta/rc from latest major for auto version resolution
+  --include-prerelease-latest-major      Include all alpha/beta/rc from latest major for auto version resolution
   --iterations <n>                       JMH warmup + measurement iterations
   --iteration-time-ms <n>                JMH warmup + measurement time in ms
   --forks <n>                            JMH forks
@@ -312,6 +312,8 @@ else
       --include-all-latest-majors 2
       --latest-minors-per-major 3
       --no-include-latest-per-major
+      --latest-prerelease-count 2
+      --include-latest-snapshot
       --json
     )
     if [[ "$INCLUDE_PRERELEASE_LATEST_MAJOR" == "true" ]]; then

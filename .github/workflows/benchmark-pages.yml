@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       includePrereleaseLatestMajor:
-        description: 'Include alpha/beta/rc from the latest major when auto-resolving versions'
+        description: 'Include all alpha/beta/rc from latest major (default already includes latest 2 prereleases)'
         required: false
         default: false
         type: boolean
@@ -80,6 +80,8 @@ jobs:
               --include-all-latest-majors 2
               --latest-minors-per-major 3
               --no-include-latest-per-major
+              --latest-prerelease-count 2
+              --include-latest-snapshot
             )
             if [ "${INPUT_INCLUDE_PRERELEASE_LATEST_MAJOR:-false}" = "true" ]; then
               auto_args+=(--include-prerelease-latest-major)
