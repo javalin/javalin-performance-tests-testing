@@ -64,6 +64,13 @@ def stable_tuple(version: str) -> Tuple[int, int, int]:
     return major, minor, patch
 
 
+def prerelease_base_tuple(version: str) -> Tuple[int, int, int]:
+    major, minor, patch, suffix = parse_version(version)
+    if not suffix:
+        raise ValueError(f"Not a prerelease version: {version}")
+    return major, minor, patch
+
+
 def version_sort_key(version: str):
     major, minor, patch, suffix = parse_version(version)
     stability_rank = 1 if suffix == "" else 0
@@ -155,10 +162,16 @@ def select_versions(
         latest_major_seen = max(parsed[0] for _, parsed in parsed_all)
 
     if latest_major_seen is not None and (include_prerelease_latest_major or latest_prerelease_count > 0):
+        stable_bases = {stable_tuple(version) for version in stable_versions}
         prereleases = [
             version
             for version, (major, _, _, suffix) in parsed_all
             if major == latest_major_seen and suffix != "" and "snapshot" not in suffix.lower()
+        ]
+        prereleases = [
+            version
+            for version in prereleases
+            if prerelease_base_tuple(version) not in stable_bases
         ]
         prereleases = sorted(prereleases, key=version_sort_key)
 
@@ -237,6 +250,9 @@ def build_header(
         lines.append("# - include latest snapshot from https://maven.reposilite.com/snapshots")
     else:
         lines.append("# - snapshots excluded")
+
+    if include_prerelease_latest_major or latest_prerelease_count > 0:
+        lines.append("# - prerelease is skipped when matching stable x.y.z already exists")
 
     lines.append(f"# - minimum stable cutoff: >= {minimum_text}")
     return lines

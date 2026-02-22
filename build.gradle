@@ -1,8 +1,8 @@
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
-    id 'org.jetbrains.kotlin.jvm' version '1.9.25'
+    id 'org.jetbrains.kotlin.jvm' version '2.2.20'
     // AnnotationProcessor for kotlin
-    id 'org.jetbrains.kotlin.kapt' version '1.9.25'
+    id 'org.jetbrains.kotlin.kapt' version '2.2.20'
 }
 kotlin {
     jvmToolchain {
@@ -90,10 +90,15 @@ dependencies {
 
 sourceSets {
     def versionSourceDir = file("${externalDir}${javalinVersion}")
+    def majorVersion = javalinVersion.tokenize('.')[0]
+    def majorSourceDir = file("${externalDir}${majorVersion}")
     def defaultSourceDir = file("${externalDir}default")
     if (versionSourceDir.exists()) {
         logger.lifecycle("Using version-specific benchmark wrapper directory ${versionSourceDir}")
         main.kotlin.srcDir(versionSourceDir)
+    } else if (majorSourceDir.exists()) {
+        logger.lifecycle("Using major-version benchmark wrapper directory ${majorSourceDir} for ${javalinVersion}")
+        main.kotlin.srcDir(majorSourceDir)
     } else {
         logger.lifecycle("No version-specific benchmark wrapper found for ${javalinVersion}, using default")
         main.kotlin.srcDir(defaultSourceDir)

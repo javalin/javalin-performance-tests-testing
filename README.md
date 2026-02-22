@@ -47,7 +47,10 @@ Run with explicit tuning and JSON output:
 - `benchmark.http.readTimeoutMs`: HTTP client read timeout for benchmark traffic (default `120000`).
 - `benchmark.http.writeTimeoutMs`: HTTP client write timeout for benchmark traffic (default `120000`).
 
-If there is no version-specific wrapper in `src/main/external/<version>/`, the build falls back to `src/main/external/default/`.
+Wrapper selection order:
+- exact version wrapper in `src/main/external/<version>/` (if present),
+- major-line wrapper in `src/main/external/<major>/` (if present),
+- otherwise `src/main/external/default/`.
 Use `clean benchmark` when switching versions to avoid stale compiled classes between runs.
 
 ## Benchmark scenarios
