@@ -1,0 +1,119 @@
+plugins {
+    // Apply the Kotlin JVM plugin to add support for Kotlin.
+    id 'org.jetbrains.kotlin.jvm' version '1.9.25'
+    // AnnotationProcessor for kotlin
+    id 'org.jetbrains.kotlin.kapt' version '1.9.25'
+}
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of("17"))
+    }
+}
+ext{
+    jmhVersion='1.35'
+    okhttpVersion='3.6.0'
+    sl4jVersion='1.7.24'
+    logbackVersion= '1.2.1'
+    jacksonVersion='2.17.2'
+    httpcomponentVersion='4.5.3'
+    httpclientVersion='4.5.1'
+    fastcsvVersion='1.0.3'
+    asciitableVersion='0.3.2'
+    externalDir = 'src/main/external/'
+}
+
+ext{
+    javalinVersion = project.hasProperty('javalinVersion') ? project.getProperty('javalinVersion') : '4.0.0'
+    if (javalinVersion == "3.2.0") {
+        project.logger.error("Can't benchmark Javalin 3.2.0. See https://github.com/javalin/javalin/issues/674")
+        return 1
+    }
+    baseline = project.hasProperty('baseline') ? project.getProperty('baseline') : '1.0.0'
+    profileName = project.hasProperty('profileName') ? project.getProperty('profileName') : ''
+    iterations = project.hasProperty('iterations') ? project.getProperty('iterations') : '20'
+    iterationTime = project.hasProperty('iterationTime') ? project.getProperty('iterationTime') : '10000'
+    threads = project.hasProperty('threads') ? project.getProperty('threads') : '32'
+    forks = project.hasProperty('forks') ? project.getProperty('forks') : '1'
+    resultFormat = project.hasProperty('resultFormat') ? project.getProperty('resultFormat') : 'csv'
+    mode = project.hasProperty('mode') ? project.getProperty('mode') : 'benchmark'
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url "https://maven.reposilite.com/snapshots"
+    }
+}
+
+dependencies {
+    // Align versions of all Kotlin components
+    implementation platform('org.jetbrains.kotlin:kotlin-bom')
+
+    // Use the Kotlin JDK 8 standard library.
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+
+    // Use the Kotlin test library.
+    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+
+    // Use the Kotlin JUnit integration.
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit'
+
+    // Javalin
+    implementation "io.javalin:javalin:$javalinVersion"
+    // Optional in Javalin, but required for stable json() benchmark behavior across versions.
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion"
+
+    //JMH
+    implementation "org.openjdk.jmh:jmh-core:$jmhVersion"
+    kapt "org.openjdk.jmh:jmh-generator-annprocess:$jmhVersion"
+
+    //sl4f
+    implementation "org.slf4j:slf4j-api:$sl4jVersion"
+    implementation "org.slf4j:log4j-over-slf4j:$sl4jVersion"
+
+    //okhttp3
+    implementation "com.squareup.okhttp3:okhttp:$okhttpVersion"
+
+    //logback
+    implementation "ch.qos.logback:logback-classic:$logbackVersion"
+
+    //httpcomponents
+    implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: "$httpclientVersion"
+
+    // https://mvnrepository.com/artifact/de.siegmar/fastcsv
+    implementation group: 'de.siegmar', name: 'fastcsv', version: "$fastcsvVersion"
+
+    implementation "de.vandermeer:asciitable:$asciitableVersion"
+}
+
+sourceSets {
+    def versionSourceDir = file("${externalDir}${javalinVersion}")
+    def defaultSourceDir = file("${externalDir}default")
+    if (versionSourceDir.exists()) {
+        logger.lifecycle("Using version-specific benchmark wrapper directory ${versionSourceDir}")
+        main.kotlin.srcDir(versionSourceDir)
+    } else {
+        logger.lifecycle("No version-specific benchmark wrapper found for ${javalinVersion}, using default")
+        main.kotlin.srcDir(defaultSourceDir)
+    }
+}
+
+task benchmark(type: JavaExec) {
+    mainClass = 'javalin.performance.JavalinKt'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs =
+         ["-Dversion=${javalinVersion}", "-Dmode=${mode}",
+          "-DprofileName=${profileName}", "-Diterations=${iterations}",
+          "-DiterationTime=${iterationTime}", "-Dthreads=${threads}",
+          "-Dforks=${forks}", "-DresultFormat=${resultFormat}"]
+}
+
+task compare(type:JavaExec){
+    mainClass = 'javalin.performance.BenchmarkCompareKt'
+    classpath = sourceSets.main.runtimeClasspath
+    jvmArgs =
+        ["-DprofileName=${profileName}",
+        "-Dbaseline=${baseline}","-DjavalinVersion=${javalinVersion}"]
+}

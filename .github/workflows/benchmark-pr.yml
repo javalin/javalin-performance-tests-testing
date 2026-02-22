@@ -1,0 +1,150 @@
+name: Benchmark PR
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Comma/space-separated Javalin versions (overrides config/pr-versions.txt)'
+        required: false
+        type: string
+      iterations:
+        description: 'JMH warmup and measurement iterations'
+        required: false
+        default: '10'
+        type: string
+      iterationTimeMs:
+        description: 'JMH warmup and measurement time in milliseconds'
+        required: false
+        default: '1000'
+        type: string
+      forks:
+        description: 'JMH forks'
+        required: false
+        default: '2'
+        type: string
+      threads:
+        description: 'JMH worker threads'
+        required: false
+        default: '4'
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-pr-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    env:
+      INPUT_VERSIONS: ${{ github.event.inputs.versions }}
+      INPUT_ITERATIONS: ${{ github.event.inputs.iterations }}
+      INPUT_ITERATION_TIME_MS: ${{ github.event.inputs.iterationTimeMs }}
+      INPUT_FORKS: ${{ github.event.inputs.forks }}
+      INPUT_THREADS: ${{ github.event.inputs.threads }}
+      PR_OR_RUN_ID: ${{ github.event.pull_request.number || github.run_id }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_WORKFLOW: ${{ github.workflow }}
+      GITHUB_RUN_NUMBER: ${{ github.run_number }}
+      GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_REF_NAME: ${{ github.ref_name }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run PR benchmark suite
+        run: |
+          set -euo pipefail
+
+          RUN_ID="pr-${PR_OR_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          RUN_TIMESTAMP_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          VERSIONS_JSON="$(python3 scripts/resolve_versions.py --raw "${INPUT_VERSIONS:-}" --config config/pr-versions.txt)"
+          ITERATIONS="${INPUT_ITERATIONS:-10}"
+          ITERATION_TIME_MS="${INPUT_ITERATION_TIME_MS:-1000}"
+          FORKS="${INPUT_FORKS:-2}"
+          THREADS="${INPUT_THREADS:-4}"
+
+          mkdir -p current-run/results
+          python3 scripts/collect_runner_info.py current-run/runner-info.json
+          python3 scripts/write_run_metadata.py \
+            --output current-run/run-metadata.json \
+            --run-id "${RUN_ID}" \
+            --run-timestamp-utc "${RUN_TIMESTAMP_UTC}" \
+            --versions-json "${VERSIONS_JSON}" \
+            --iterations "${ITERATIONS}" \
+            --iteration-time-ms "${ITERATION_TIME_MS}" \
+            --forks "${FORKS}" \
+            --threads "${THREADS}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --workflow "${GITHUB_WORKFLOW}" \
+            --run-number "${GITHUB_RUN_NUMBER}" \
+            --run-attempt "${GITHUB_RUN_ATTEMPT}" \
+            --git-sha "${GITHUB_SHA}" \
+            --git-ref "${GITHUB_REF_NAME}"
+
+          python3 scripts/json_to_lines.py "${VERSIONS_JSON}" > /tmp/versions.txt
+
+          while IFS= read -r version; do
+            echo "Running PR benchmark for Javalin ${version}"
+            ./gradlew --no-daemon clean benchmark \
+              -PjavalinVersion="${version}" \
+              -Piterations="${ITERATIONS}" \
+              -PiterationTime="${ITERATION_TIME_MS}" \
+              -Pthreads="${THREADS}" \
+              -Pforks="${FORKS}" \
+              -PresultFormat="json"
+            cp "results/${version}.json" "current-run/results/${version}.json"
+          done < /tmp/versions.txt
+
+      - name: Build trend report including history branch
+        run: |
+          set -euo pipefail
+          mkdir -p pr-history/runs
+          repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git ls-remote --exit-code --heads "$repo_url" benchmark-data >/dev/null 2>&1; then
+            git clone --depth 1 --branch benchmark-data "$repo_url" benchmark-history
+            if [ -d benchmark-history/runs ]; then
+              cp -R benchmark-history/runs/. pr-history/runs/
+            fi
+          fi
+
+          RUN_ID="$(python3 -c 'import json; print(json.load(open("current-run/run-metadata.json"))["runId"])')"
+          mkdir -p "pr-history/runs/${RUN_ID}"
+          cp -R current-run/. "pr-history/runs/${RUN_ID}/"
+
+          python3 scripts/generate_pages.py \
+            --history-root pr-history/runs \
+            --output-dir pr-site \
+            --repository "${GITHUB_REPOSITORY}"
+
+      - name: Add summary to job page
+        run: |
+          python3 scripts/print_summary_markdown.py pr-site/summary.json --limit 60 >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload PR benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-benchmark-${{ github.run_id }}
+          path: |
+            current-run
+            pr-site
+          if-no-files-found: error

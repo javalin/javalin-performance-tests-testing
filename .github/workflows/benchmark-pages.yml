@@ -1,0 +1,268 @@
+name: Benchmark and Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Comma/space-separated Javalin versions (overrides auto Maven policy)'
+        required: false
+        type: string
+      includePrereleaseLatestMajor:
+        description: 'Include alpha/beta/rc from the latest major when auto-resolving versions'
+        required: false
+        default: false
+        type: boolean
+      iterations:
+        description: 'JMH warmup and measurement iterations'
+        required: false
+        default: '10'
+        type: string
+      iterationTimeMs:
+        description: 'JMH warmup and measurement time in milliseconds'
+        required: false
+        default: '1000'
+        type: string
+      forks:
+        description: 'JMH forks'
+        required: false
+        default: '2'
+        type: string
+      threads:
+        description: 'JMH worker threads'
+        required: false
+        default: '4'
+        type: string
+  schedule:
+    - cron: '17 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      versions_json: ${{ steps.prepare.outputs.versions_json }}
+      iterations: ${{ steps.prepare.outputs.iterations }}
+      iteration_time_ms: ${{ steps.prepare.outputs.iteration_time_ms }}
+      forks: ${{ steps.prepare.outputs.forks }}
+      threads: ${{ steps.prepare.outputs.threads }}
+      run_id: ${{ steps.prepare.outputs.run_id }}
+      run_timestamp_utc: ${{ steps.prepare.outputs.run_timestamp_utc }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve benchmark config
+        id: prepare
+        env:
+          INPUT_VERSIONS: ${{ github.event.inputs.versions }}
+          INPUT_INCLUDE_PRERELEASE_LATEST_MAJOR: ${{ github.event.inputs.includePrereleaseLatestMajor }}
+          INPUT_ITERATIONS: ${{ github.event.inputs.iterations }}
+          INPUT_ITERATION_TIME_MS: ${{ github.event.inputs.iterationTimeMs }}
+          INPUT_FORKS: ${{ github.event.inputs.forks }}
+          INPUT_THREADS: ${{ github.event.inputs.threads }}
+        run: |
+          set -euo pipefail
+          run_id="$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          run_timestamp_utc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+          if [ -n "${INPUT_VERSIONS:-}" ]; then
+            versions_json="$(python3 scripts/resolve_versions.py --raw "${INPUT_VERSIONS}" --config config/versions.txt)"
+          else
+            auto_args=(
+              --output /tmp/auto-versions.txt
+              --minimum 1.0.0
+              --include-all-latest-majors 2
+              --latest-minors-per-major 3
+              --no-include-latest-per-major
+            )
+            if [ "${INPUT_INCLUDE_PRERELEASE_LATEST_MAJOR:-false}" = "true" ]; then
+              auto_args+=(--include-prerelease-latest-major)
+            fi
+
+            set +e
+            versions_json="$(python3 scripts/update_versions_from_maven.py "${auto_args[@]}" --json)"
+            auto_status=$?
+            set -e
+
+            if [ $auto_status -ne 0 ] || [ -z "${versions_json}" ] || [ "${versions_json}" = "[]" ]; then
+              echo "Auto version resolution failed, falling back to config/versions.txt"
+              versions_json="$(python3 scripts/resolve_versions.py --config config/versions.txt)"
+            fi
+          fi
+
+          iterations="${INPUT_ITERATIONS:-10}"
+          iteration_time_ms="${INPUT_ITERATION_TIME_MS:-1000}"
+          forks="${INPUT_FORKS:-2}"
+          threads="${INPUT_THREADS:-4}"
+
+          echo "versions_json=${versions_json}" >> "$GITHUB_OUTPUT"
+          echo "iterations=${iterations}" >> "$GITHUB_OUTPUT"
+          echo "iteration_time_ms=${iteration_time_ms}" >> "$GITHUB_OUTPUT"
+          echo "forks=${forks}" >> "$GITHUB_OUTPUT"
+          echo "threads=${threads}" >> "$GITHUB_OUTPUT"
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+          echo "run_timestamp_utc=${run_timestamp_utc}" >> "$GITHUB_OUTPUT"
+
+  benchmark:
+    runs-on: ubuntu-latest
+    needs: prepare
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run JMH benchmarks sequentially on one runner
+        env:
+          VERSIONS_JSON: ${{ needs.prepare.outputs.versions_json }}
+          ITERATIONS: ${{ needs.prepare.outputs.iterations }}
+          ITERATION_TIME_MS: ${{ needs.prepare.outputs.iteration_time_ms }}
+          FORKS: ${{ needs.prepare.outputs.forks }}
+          THREADS: ${{ needs.prepare.outputs.threads }}
+          RUN_ID: ${{ needs.prepare.outputs.run_id }}
+          RUN_TIMESTAMP_UTC: ${{ needs.prepare.outputs.run_timestamp_utc }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_WORKFLOW: ${{ github.workflow }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-output/results
+
+          python3 scripts/collect_runner_info.py benchmark-output/runner-info.json
+          python3 scripts/write_run_metadata.py \
+            --output benchmark-output/run-metadata.json \
+            --run-id "${RUN_ID}" \
+            --run-timestamp-utc "${RUN_TIMESTAMP_UTC}" \
+            --versions-json "${VERSIONS_JSON}" \
+            --iterations "${ITERATIONS}" \
+            --iteration-time-ms "${ITERATION_TIME_MS}" \
+            --forks "${FORKS}" \
+            --threads "${THREADS}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --workflow "${GITHUB_WORKFLOW}" \
+            --run-number "${GITHUB_RUN_NUMBER}" \
+            --run-attempt "${GITHUB_RUN_ATTEMPT}" \
+            --git-sha "${GITHUB_SHA}" \
+            --git-ref "${GITHUB_REF_NAME}"
+
+          python3 scripts/json_to_lines.py "${VERSIONS_JSON}" > /tmp/versions.txt
+
+          while IFS= read -r version; do
+            echo "Running benchmark for Javalin ${version}"
+            ./gradlew --no-daemon clean benchmark \
+              -PjavalinVersion="${version}" \
+              -Piterations="${ITERATIONS}" \
+              -PiterationTime="${ITERATION_TIME_MS}" \
+              -Pthreads="${THREADS}" \
+              -Pforks="${FORKS}" \
+              -PresultFormat="json"
+
+            cp "results/${version}.json" "benchmark-output/results/${version}.json"
+          done < /tmp/versions.txt
+
+      - name: Upload benchmark run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-run-${{ needs.prepare.outputs.run_id }}
+          path: benchmark-output
+          if-no-files-found: error
+
+  publish-pages:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare
+      - benchmark
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download benchmark run artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-run-${{ needs.prepare.outputs.run_id }}
+          path: current-run
+
+      - name: Update benchmark history branch
+        env:
+          RUN_ID: ${{ needs.prepare.outputs.run_id }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if git ls-remote --exit-code --heads "$repo_url" benchmark-data >/dev/null 2>&1; then
+            git clone --depth 1 --branch benchmark-data "$repo_url" benchmark-history
+          else
+            mkdir benchmark-history
+            pushd benchmark-history >/dev/null
+            git init
+            git checkout -b benchmark-data
+            git remote add origin "$repo_url"
+            popd >/dev/null
+          fi
+
+          mkdir -p "benchmark-history/runs/${RUN_ID}"
+          cp -R current-run/. "benchmark-history/runs/${RUN_ID}/"
+
+          pushd benchmark-history >/dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "runs/${RUN_ID}"
+
+          if git diff --cached --quiet; then
+            echo "No new benchmark data to commit"
+          else
+            git commit -m "Add benchmark run ${RUN_ID}"
+            git push origin HEAD:benchmark-data
+          fi
+          popd >/dev/null
+
+      - name: Build static report site
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 scripts/generate_pages.py \
+            --history-root benchmark-history/runs \
+            --output-dir site \
+            --repository "${GITHUB_REPOSITORY}"
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
