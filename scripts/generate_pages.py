@@ -155,14 +155,42 @@ def summarize(records: Iterable[Record]):
 
     summary_rows.sort(key=lambda row: (row["benchmark"], row["version"]))
 
-    benchmark_max: Dict[str, float] = {}
+    benchmark_groups: Dict[str, List[dict]] = {}
     for row in summary_rows:
-        current = benchmark_max.get(row["benchmark"])
-        if current is None or row["latestScore"] > current:
-            benchmark_max[row["benchmark"]] = row["latestScore"]
+        benchmark_groups.setdefault(row["benchmark"], []).append(row)
 
-    for row in summary_rows:
-        row["isWinner"] = row["latestScore"] == benchmark_max.get(row["benchmark"])
+    def relative_error_percent(score: float, score_error: Optional[float]) -> Optional[float]:
+        if score_error is None or score == 0:
+            return None
+        return abs(score_error / score) * 100.0
+
+    def uncertainty_percent(row: dict) -> float:
+        candidates = [2.0]  # minimum uncertainty floor
+        cv = row.get("cvLast8Percent")
+        rel_err = relative_error_percent(row.get("latestScore", 0.0), row.get("latestScoreError"))
+        if cv is not None and math.isfinite(cv):
+            candidates.append(abs(cv))
+        if rel_err is not None and math.isfinite(rel_err):
+            candidates.append(abs(rel_err))
+        return min(max(candidates), 20.0)
+
+    for benchmark_rows in benchmark_groups.values():
+        best_row = max(benchmark_rows, key=lambda item: item["latestScore"])
+        best_score = best_row["latestScore"]
+        best_uncertainty = uncertainty_percent(best_row)
+
+        for row in benchmark_rows:
+            row_uncertainty = uncertainty_percent(row)
+            combined_band = min(max(math.sqrt(best_uncertainty**2 + row_uncertainty**2), 2.0), 20.0)
+            delta_from_best = 0.0
+            if best_score != 0:
+                delta_from_best = ((best_score - row["latestScore"]) / best_score) * 100.0
+
+            row["strictBest"] = row is best_row
+            row["bestBandPercent"] = combined_band
+            row["deltaFromBestPercent"] = delta_from_best
+            row["coBest"] = delta_from_best <= combined_band + 1e-9
+            row["uncertaintyPercent"] = row_uncertainty
 
     return summary_rows
 
@@ -179,112 +207,24 @@ def compact_sidebar_timestamp(value: str) -> str:
     return value
 
 
-def render_line_chart_svg(benchmark: str, score_unit: str, run_labels: List[str], series: List[dict]) -> str:
-    width = 980
-    height = 280
-    left = 60
-    right = 20
-    top = 20
-    bottom = 45
-    plot_width = width - left - right
-    plot_height = height - top - bottom
-
-    values = [value for line in series for value in line["values"] if value is not None]
-    if not values:
-        return f"<svg viewBox='0 0 {width} {height}' role='img' aria-label='{escape(benchmark)} trend chart'><text x='20' y='30'>No data</text></svg>"
-
-    y_min = min(values)
-    y_max = max(values)
-    if y_max == y_min:
-        y_min -= 1.0
-        y_max += 1.0
-    else:
-        padding = (y_max - y_min) * 0.12
-        y_min -= padding
-        y_max += padding
-
-    run_count = len(run_labels)
-
-    def x_of(index: int) -> float:
-        if run_count <= 1:
-            return left + plot_width / 2
-        return left + (plot_width * index / (run_count - 1))
-
-    def y_of(value: float) -> float:
-        return top + (y_max - value) * plot_height / (y_max - y_min)
-
-    grid_lines = []
-    tick_count = 5
-    for index in range(tick_count):
-        ratio = index / (tick_count - 1)
-        tick_value = y_max - (y_max - y_min) * ratio
-        y = top + ratio * plot_height
-        grid_lines.append(f"<line x1='{left}' y1='{y:.2f}' x2='{left + plot_width}' y2='{y:.2f}' stroke='#dce9f6' stroke-width='1' />")
-        grid_lines.append(f"<text x='{left - 8}' y='{y + 4:.2f}' text-anchor='end' fill='#50667f' font-size='11'>{tick_value:.2f}</text>")
-
-    x_labels = []
-    if run_count > 0:
-        x_labels.append((0, run_labels[0]))
-    if run_count > 2:
-        x_labels.append((run_count // 2, run_labels[run_count // 2]))
-    if run_count > 1:
-        x_labels.append((run_count - 1, run_labels[-1]))
-
-    x_tick_labels = []
-    seen = set()
-    for index, label in x_labels:
-        if index in seen:
-            continue
-        seen.add(index)
-        x = x_of(index)
-        x_tick_labels.append(f"<text x='{x:.2f}' y='{height - 12}' text-anchor='middle' fill='#50667f' font-size='11'>{escape(label)}</text>")
-
-    line_shapes = []
-    legend_items = []
-    for legend_index, line in enumerate(series):
-        points = []
-        for value_index, value in enumerate(line["values"]):
-            if value is None:
-                continue
-            points.append((x_of(value_index), y_of(value)))
-
-        if len(points) >= 2:
-            polyline_points = " ".join(f"{x:.2f},{y:.2f}" for x, y in points)
-            line_shapes.append(
-                f"<polyline fill='none' stroke='{line['color']}' stroke-width='2.4' points='{polyline_points}' />"
-            )
-
-        for x, y in points:
-            line_shapes.append(f"<circle cx='{x:.2f}' cy='{y:.2f}' r='2.8' fill='{line['color']}' />")
-
-        legend_x = left + 8 + (legend_index * 160)
-        legend_y = top + 10
-        legend_items.append(f"<line x1='{legend_x}' y1='{legend_y}' x2='{legend_x + 16}' y2='{legend_y}' stroke='{line['color']}' stroke-width='3' />")
-        legend_items.append(
-            f"<text x='{legend_x + 22}' y='{legend_y + 4}' fill='#21344d' font-size='12'>{escape(line['label'])}</text>"
-        )
-
-    return (
-        f"<svg viewBox='0 0 {width} {height}' role='img' aria-label='{escape(benchmark)} trend chart'>"
-        f"<rect x='0' y='0' width='{width}' height='{height}' fill='white' rx='10' />"
-        f"<text x='{left}' y='16' fill='#132236' font-size='13'>{escape(benchmark)} ({escape(score_unit)})</text>"
-        + "".join(grid_lines)
-        + f"<line x1='{left}' y1='{top}' x2='{left}' y2='{top + plot_height}' stroke='#9fb6cc' stroke-width='1.2' />"
-        + f"<line x1='{left}' y1='{top + plot_height}' x2='{left + plot_width}' y2='{top + plot_height}' stroke='#9fb6cc' stroke-width='1.2' />"
-        + "".join(line_shapes)
-        + "".join(legend_items)
-        + "".join(x_tick_labels)
-        + "</svg>"
-    )
+def display_timestamp(value: str) -> str:
+    try:
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    except Exception:
+        return value
 
 
-def build_chart_blocks(records: List[Record]) -> str:
+def build_chart_data_map(records: List[Record]) -> Dict[str, dict]:
     grouped: Dict[str, List[Record]] = {}
     for record in records:
         grouped.setdefault(record.benchmark, []).append(record)
 
     colors = ["#0f8b8d", "#c23b4f", "#2a63d4", "#ef8354", "#1f7a8c", "#4f5d75"]
-    blocks = []
+    chart_data: Dict[str, dict] = {}
 
     for benchmark in sorted(grouped.keys()):
         values = grouped[benchmark]
@@ -292,7 +232,6 @@ def build_chart_blocks(records: List[Record]) -> str:
 
         unique_runs = sorted({(record.run_id, record.run_timestamp) for record in values}, key=lambda item: (item[1], item[0]))
         run_index = {run_id: idx for idx, (run_id, _) in enumerate(unique_runs)}
-        run_labels = [compact_timestamp(run_timestamp) for _, run_timestamp in unique_runs]
 
         versions = sorted({record.version for record in values})
         score_unit = values[0].score_unit if values else ""
@@ -310,18 +249,28 @@ def build_chart_blocks(records: List[Record]) -> str:
                 }
             )
 
-        svg = render_line_chart_svg(benchmark, score_unit, run_labels, series)
-        blocks.append(
-            "<section class='chart-card'>"
-            + f"<h3>{escape(benchmark)}</h3>"
-            + svg
-            + "</section>"
-        )
+        chart_data[benchmark] = {
+            "benchmark": benchmark,
+            "scoreUnit": score_unit,
+            "runs": [
+                {
+                    "runId": run_id,
+                    "label": compact_timestamp(run_timestamp),
+                    "fullLabel": display_timestamp(run_timestamp),
+                }
+                for run_id, run_timestamp in unique_runs
+            ],
+            "series": [
+                {
+                    "name": item["label"],
+                    "data": item["values"],
+                    "color": item["color"],
+                }
+                for item in series
+            ],
+        }
 
-    if not blocks:
-        return "<p>No trend data yet.</p>"
-
-    return "\n".join(blocks)
+    return chart_data
 
 
 def select_latest_run_id(run_metadata: Dict[str, dict]) -> Optional[str]:
@@ -370,6 +319,8 @@ def table_header(include_benchmark: bool) -> str:
             "<th>Score Error</th>",
             "<th>Unit</th>",
             "<th>Delta vs Prev %</th>",
+            "<th>Delta vs Best %</th>",
+            "<th>Best Band %</th>",
             "<th>Mean (last 8)</th>",
             "<th>Stdev (last 8)</th>",
             "<th>CV% (last 8)</th>",
@@ -384,8 +335,14 @@ def table_header(include_benchmark: bool) -> str:
 
 
 def render_summary_row(row: dict, include_benchmark: bool) -> str:
-    winner_badge = "<span class='winner-badge'>Best</span>" if row.get("isWinner") else ""
-    row_class = "winner-row" if row.get("isWinner") else ""
+    winner_badge = ""
+    row_class = ""
+    if row.get("strictBest"):
+        winner_badge = "<span class='winner-badge' title='Highest latest score'>&#9733; Best</span>"
+        row_class = "winner-row"
+    elif row.get("coBest"):
+        winner_badge = "<span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span>"
+        row_class = "cobest-row"
     cells = []
     if include_benchmark:
         cells.append(f"<td>{escape(row['benchmark'])}</td>")
@@ -397,6 +354,8 @@ def render_summary_row(row: dict, include_benchmark: bool) -> str:
             f"<td>{safe_float(row['latestScoreError'])}</td>",
             f"<td>{escape(row['scoreUnit'])}</td>",
             f"<td>{safe_float(row['deltaVsPreviousPercent'], 2)}</td>",
+            f"<td>{safe_float(row.get('deltaFromBestPercent'), 2)}</td>",
+            f"<td>{safe_float(row.get('bestBandPercent'), 2)}</td>",
             f"<td>{safe_float(row['meanLast8'])}</td>",
             f"<td>{safe_float(row['stdevLast8'])}</td>",
             f"<td>{safe_float(row['cvLast8Percent'], 2)}</td>",
@@ -410,22 +369,33 @@ def render_summary_row(row: dict, include_benchmark: bool) -> str:
     return "<tr class='" + row_class + "'>" + "".join(cells) + "</tr>"
 
 
-def summarize_table_rows(rows: List[dict]) -> str:
+def render_overview_table(rows: List[dict]) -> str:
     if not rows:
-        return "<tr><td colspan='15'>No data yet.</td></tr>"
+        return "<p>No benchmark rows yet.</p>"
 
-    rendered = []
+    body_rows: List[str] = []
     previous_benchmark = None
     for row in rows:
-        if row["benchmark"] != previous_benchmark:
-            rendered.append(
-                "<tr class='benchmark-divider'>"
-                + f"<td colspan='15'>{escape(benchmark_group_label(row['benchmark']))}: {escape(row['benchmark'])}</td>"
+        benchmark = row["benchmark"]
+        if benchmark != previous_benchmark:
+            body_rows.append(
+                "<tr class='overview-divider'>"
+                + f"<td colspan='17'>{escape(benchmark_group_label(benchmark))}: {escape(benchmark)}</td>"
                 + "</tr>"
             )
-        previous_benchmark = row["benchmark"]
-        rendered.append(render_summary_row(row, include_benchmark=True))
-    return "\n".join(rendered)
+        previous_benchmark = benchmark
+        body_rows.append(render_summary_row(row, include_benchmark=True))
+
+    body = "\n".join(body_rows)
+    return (
+        "<div class='summary-wrap overview-wrap'>"
+        + "<table><thead>"
+        + table_header(include_benchmark=True)
+        + "</thead><tbody>"
+        + body
+        + "</tbody></table>"
+        + "</div>"
+    )
 
 
 def benchmark_tab_id(benchmark: str) -> str:
@@ -469,6 +439,9 @@ def render_benchmark_tabs(rows: List[dict]) -> str:
             + "</thead><tbody>"
             + table_rows
             + "</tbody></table>"
+            + "</div>"
+            + "<div class='panel-chart'>"
+            + f"<section class='chart-card'><div class='chart-host' data-chart-key='{escape(benchmark)}'></div></section>"
             + "</div>"
             + "</section>"
         )
@@ -538,7 +511,7 @@ def render_sidebar(
 def build_html(
     repo: str,
     rows: List[dict],
-    charts_html: str,
+    chart_data_map: Dict[str, dict],
     latest_run_id: Optional[str],
     latest_meta: dict,
     latest_runner: dict,
@@ -565,9 +538,10 @@ def build_html(
     cpu_details = cpu.get("details", {}) if isinstance(cpu.get("details"), dict) else {}
     mem = latest_runner.get("memory", {}) if latest_runner else {}
 
-    table_rows = summarize_table_rows(rows)
     benchmark_tabs_html = render_benchmark_tabs(rows)
+    overview_table_html = render_overview_table(rows)
     sidebar = render_sidebar(run_timeline, active_run_id, latest_run_id, root_rel)
+    chart_data_json = json.dumps(chart_data_map).replace("</", "<\\/")
 
     mode_title = "Latest cumulative report" if active_run_id is None else f"Snapshot for {active_run_id}"
 
@@ -577,9 +551,11 @@ def build_html(
         <p>Pretend each benchmark is a race. The fastest racer wins.</p>
         <p><strong>Higher score is better.</strong> Score is <code>ops/ms</code>: how many requests finished in one millisecond.</p>
         <p><strong>Benchmark Settings</strong> show what this specific run actually executed.</p>
-        <p>In the summary table, <strong>Best</strong> marks the winner for that benchmark in this report.</p>
+        <p><strong>&#9733; Best</strong> marks the strict top score in that benchmark.</p>
+        <p><strong>Near best</strong> means the score is within a CV/error uncertainty band of the top score.</p>
         <p><strong>Delta vs Prev %</strong> compares this run to the previous run for the same version and benchmark.</p>
-        <p><strong>CV%</strong> is consistency: lower means more stable numbers over time.</p>
+        <p><strong>CV%</strong> is consistency across recent runs (not the same as Delta vs Prev): lower means more stable numbers over time.</p>
+        <p><strong>Chart tips:</strong> hover a line point to see timestamp + exact score.</p>
       </section>
     """
 
@@ -725,17 +701,8 @@ def build_html(
     th {{ position: sticky; top: 0; background: #e9f3fb; z-index: 1; }}
     .winner-row {{ background: var(--winner-bg); }}
     .winner-row td:first-child {{ border-left: 4px solid var(--winner-border); }}
-    .benchmark-divider td {{
-      position: sticky;
-      top: 34px;
-      z-index: 1;
-      background: #dfeefa;
-      border-top: 2px solid #bdd4e8;
-      border-bottom: 1px solid #bdd4e8;
-      font-weight: 700;
-      color: #13314f;
-      white-space: normal;
-    }}
+    .cobest-row {{ background: #f9f5e8; }}
+    .cobest-row td:first-child {{ border-left: 4px solid #a6782f; }}
     .winner-badge {{
       display: inline-block;
       border: 1px solid var(--winner-border);
@@ -746,19 +713,51 @@ def build_html(
       background: #dff1e8;
       color: #184d33;
     }}
-    .chart-grid {{ display: grid; grid-template-columns: 1fr; gap: .8rem; }}
+    .cobest-badge {{
+      display: inline-block;
+      border: 1px solid #8a6a2d;
+      border-radius: 999px;
+      padding: .08rem .44rem;
+      font-size: .72rem;
+      font-weight: 700;
+      background: #f2e9cf;
+      color: #5f4a1f;
+    }}
     .chart-card {{
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 10px;
       padding: .75rem;
-      overflow-x: auto;
     }}
-    .chart-card svg {{
+    .chart-host {{
       width: 100%;
-      height: auto;
-      min-width: 960px;
-      display: block;
+      height: 340px;
+      min-height: 240px;
+    }}
+    .panel-chart {{ margin-top: .7rem; }}
+    .section-note {{
+      margin: .2rem 0 .65rem;
+      color: var(--muted);
+      font-size: .9rem;
+    }}
+    .overview-note {{
+      margin: .2rem 0 .65rem;
+      color: var(--muted);
+      font-size: .88rem;
+    }}
+    .overview-wrap {{
+      max-height: 58vh;
+    }}
+    .overview-divider td {{
+      background: #f3f8fd;
+      color: #294863;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      border-top: 2px solid #c7d8e9;
+      border-bottom: 1px solid #dbe8f3;
+      padding-top: .3rem;
+      padding-bottom: .3rem;
     }}
     footer {{ margin-top: .85rem; color: var(--muted); font-size: .84rem; }}
     @media (max-width: 1150px) {{
@@ -805,36 +804,110 @@ def build_html(
         {explain_html}
       </section>
 
-      <h2>Latest Summary</h2>
-      <div class=\"summary-wrap\">
-        <table>
-          <thead>
-            {table_header(include_benchmark=True)}
-          </thead>
-          <tbody>
-            {table_rows}
-          </tbody>
-        </table>
-      </div>
-
-      <h2>Per-Benchmark Tables</h2>
+      <h2>Per-Benchmark Results</h2>
+      <p class=\"section-note\">Each tab shows one benchmark with the latest per-version table and the trend chart directly below it.</p>
       {benchmark_tabs_html}
 
-      <h2>Trend Charts</h2>
-      <div class=\"chart-grid\">
-        {charts_html}
-      </div>
+      <h2>All Benchmarks Overview</h2>
+      <p class=\"overview-note\">This is the same latest table data as the tabs above, collected into one table for quick scanning.</p>
+      {overview_table_html}
 
-      <footer>Higher score is better in throughput mode. Compare versions within the same benchmark row. CV% is stdev/mean over up to the last 8 samples.</footer>
+      <footer>Higher score is better in throughput mode. Use Delta vs Best % plus Best Band % to spot statistically close results that can be treated as tied.</footer>
     </main>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <script>
     (() => {{
+      const chartData = {chart_data_json};
       const buttons = Array.from(document.querySelectorAll('[data-tab-button]'));
       const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
       if (!buttons.length || !panels.length) {{
         return;
       }}
+
+      const chartInstances = new Map();
+
+      const buildOption = (spec) => {{
+        const labels = spec.runs.map((run) => run.label);
+        const fullLabels = spec.runs.map((run) => run.fullLabel);
+        return {{
+          animation: false,
+          color: spec.series.map((line) => line.color),
+          grid: {{ left: 52, right: 20, top: 44, bottom: 44, containLabel: true }},
+          legend: {{ top: 0, left: 0, type: 'scroll' }},
+          tooltip: {{
+            trigger: 'axis',
+            confine: true,
+            axisPointer: {{ type: 'cross' }},
+            formatter: (params) => {{
+              if (!params || !params.length) {{
+                return '';
+              }}
+              const dataIndex = params[0].dataIndex;
+              const lines = [fullLabels[dataIndex] || labels[dataIndex] || ''];
+              params.forEach((item) => {{
+                if (item.value === null || item.value === undefined || item.value === '-') {{
+                  return;
+                }}
+                const numeric = Number(item.value);
+                const valueText = Number.isFinite(numeric) ? numeric.toFixed(4) : String(item.value);
+                lines.push(`${{item.seriesName}}: ${{valueText}} ${{spec.scoreUnit}}`);
+              }});
+              return lines.join('<br/>');
+            }},
+          }},
+          xAxis: {{
+            type: 'category',
+            boundaryGap: false,
+            data: labels,
+            axisLabel: {{ hideOverlap: true }},
+            axisTick: {{ alignWithLabel: true }},
+          }},
+          yAxis: {{
+            type: 'value',
+            name: spec.scoreUnit,
+            splitLine: {{ lineStyle: {{ color: '#dce9f6' }} }},
+          }},
+          series: spec.series.map((line) => ({{
+            name: line.name,
+            type: 'line',
+            data: line.data,
+            showSymbol: true,
+            symbolSize: 6,
+            connectNulls: false,
+            smooth: false,
+            lineStyle: {{ width: 2 }},
+            itemStyle: {{ color: line.color }},
+            emphasis: {{ focus: 'series' }},
+          }})),
+        }};
+      }};
+
+      const renderPanelChart = (panel) => {{
+        const host = panel.querySelector('.chart-host');
+        if (!host) {{
+          return;
+        }}
+        const key = host.dataset.chartKey;
+        const spec = chartData[key];
+        if (!spec) {{
+          host.textContent = 'No trend data yet.';
+          return;
+        }}
+        if (typeof echarts === 'undefined') {{
+          host.textContent = 'Chart library failed to load.';
+          return;
+        }}
+
+        let chart = chartInstances.get(key);
+        if (!chart) {{
+          chart = echarts.init(host);
+          chartInstances.set(key, chart);
+        }}
+
+        chart.setOption(buildOption(spec), true);
+        chart.resize();
+      }};
 
       const setActive = (tabId) => {{
         buttons.forEach((button) => {{
@@ -848,10 +921,24 @@ def build_html(
           panel.classList.toggle('active', active);
           panel.hidden = !active;
         }});
+
+        const activePanel = panels.find((panel) => panel.dataset.tabPanel === tabId);
+        if (activePanel) {{
+          renderPanelChart(activePanel);
+        }}
       }};
 
       buttons.forEach((button) => {{
         button.addEventListener('click', () => setActive(button.dataset.tabButton));
+      }});
+
+      const initiallyActive = buttons.find((button) => button.classList.contains('active')) || buttons[0];
+      if (initiallyActive) {{
+        setActive(initiallyActive.dataset.tabButton);
+      }}
+
+      window.addEventListener('resize', () => {{
+        chartInstances.forEach((chart) => chart.resize());
       }});
     }})();
   </script>
@@ -893,12 +980,12 @@ def write_report(
     active_run_id: Optional[str],
     root_rel: str,
 ) -> None:
-    charts_html = build_chart_blocks(records)
+    chart_data_map = build_chart_data_map(records)
     output_path.write_text(
         build_html(
             repo=repo,
             rows=rows,
-            charts_html=charts_html,
+            chart_data_map=chart_data_map,
             latest_run_id=latest_run_id,
             latest_meta=latest_meta,
             latest_runner=latest_runner,

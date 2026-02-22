@@ -60,7 +60,7 @@ Current suite includes:
 - `payload100kb`, `payload1mb`: plain text payload sizes.
 - `jsonSerializationSmall`, `jsonSerialization100kb`, `jsonSerialization1mb`: JSON serialization sizes.
 - `staticFile100kb`, `staticFile1mb`: static-like raw byte responses.
-- `routes10`, `routes100`, `routes1000`: route table size scenarios.
+- `routes10`, `routes100`, `routes1000`, `routes10000`: route table size scenarios.
   Note: these route groups currently live in one benchmark app instance, so use them for relative trend tracking.
 
 ## Compare two CSV results locally

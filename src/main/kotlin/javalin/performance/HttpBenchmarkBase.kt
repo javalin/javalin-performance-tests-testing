@@ -67,6 +67,7 @@ abstract class HttpBenchmarkBase {
         registerRouteGroup(routes, "10", 10)
         registerRouteGroup(routes, "100", 100)
         registerRouteGroup(routes, "1000", 1000)
+        registerRouteGroup(routes, "10000", 10000)
     }
 
     fun Javalin.attachEndpoints() {
@@ -251,5 +252,10 @@ abstract class HttpBenchmarkBase {
     @Benchmark
     fun routes1000() {
         load("/routes/1000/r999")
+    }
+
+    @Benchmark
+    fun routes10000() {
+        load("/routes/10000/r9999")
     }
 }
