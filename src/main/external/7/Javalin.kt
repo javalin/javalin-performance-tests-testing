@@ -11,7 +11,14 @@ open class JavalinBenchmark : HttpBenchmarkBase() {
 
     override fun startServer(port: Int) {
         app = Javalin.create { cfg ->
-            attachEndpointsTo(cfg.routes)
+            val routes = cfg.routes
+            attachEndpoints(
+                registerGet = { path, handler -> routes.get(path, handler) },
+                registerBefore = { path, handler -> routes.before(path, handler) },
+                registerAfter = { path, handler -> routes.after(path, handler) },
+                registerException = { exceptionClass, handler -> routes.exception(exceptionClass, handler) },
+                registerError = { status, handler -> routes.error(status, handler) },
+            )
         }
         app.start(port)
     }
