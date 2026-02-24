@@ -119,9 +119,10 @@ This now generates:
 
 ## CI and Pages
 Workflow: `.github/workflows/benchmark-pages.yml`
+GitHub Pages: `https://javalin.github.io/javalin-performance-tests-testing/`
 
 Triggers:
-- Weekly schedule (Monday, 03:17 UTC).
+- Nightly schedule (daily at 03:17 UTC).
 - Manual `workflow_dispatch` with optional inputs:
   - `versions` (comma/space-separated list),
   - `includePrereleaseLatestMajor` (include all latest-major alpha/beta/rc in auto version selection),
