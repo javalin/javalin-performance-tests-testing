@@ -1,6 +1,8 @@
 # javalin-performance-tests-testing
 JMH performance benchmarks for Javalin versions, with automated GitHub Actions + GitHub Pages reporting.
 
+[https://javalin.github.io/javalin-performance-tests-testing/](https://javalin.github.io/javalin-performance-tests-testing/)
+
 ## Local benchmark run
 By default, benchmark results are written under `results/`.
 
@@ -119,6 +121,7 @@ This now generates:
 
 ## CI and Pages
 Workflow: `.github/workflows/benchmark-pages.yml`
+
 GitHub Pages: `https://javalin.github.io/javalin-performance-tests-testing/`
 
 Triggers:
