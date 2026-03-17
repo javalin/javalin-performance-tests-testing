@@ -2,6 +2,11 @@ name: Benchmark PR
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   workflow_dispatch:
     inputs:
       versions:
@@ -58,7 +63,9 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
+  pages: write
+  id-token: write
 
 concurrency:
   group: benchmark-pr-${{ github.event.pull_request.number || github.event.inputs.sourcePrNumber || github.run_id }}
@@ -80,6 +87,7 @@ jobs:
       INPUT_TRIGGER_REPOSITORY: ${{ github.event.inputs.triggerRepository }}
       INPUT_TRIGGER_PR_NUMBER: ${{ github.event.inputs.triggerPrNumber }}
       INPUT_TRIGGER_PR_URL: ${{ github.event.inputs.triggerPrUrl }}
+      GH_EVENT_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
       PR_OR_RUN_ID: ${{ github.event.pull_request.number || github.event.inputs.sourcePrNumber || github.run_id }}
       GITHUB_REPOSITORY: ${{ github.repository }}
       GITHUB_WORKFLOW: ${{ github.workflow }}
@@ -89,6 +97,8 @@ jobs:
       GITHUB_REF_NAME: ${{ github.ref_name }}
       GITHUB_TOKEN: ${{ github.token }}
       PERFORMANCE_TESTS_TRIGGER_TOKEN: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+      BENCHMARK_DATA_BRANCH: ${{ vars.BENCHMARK_DATA_BRANCH || 'benchmark-data' }}
+      PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_PAGES_BASE_URL || 'https://javalin.github.io/javalin-performance-tests-testing/pr-previews' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -113,7 +123,8 @@ jobs:
           source_dir="$(mktemp -d)"
           git clone "https://github.com/${INPUT_SOURCE_REPOSITORY}.git" "${source_dir}"
           pushd "${source_dir}" >/dev/null
-          git checkout "${INPUT_SOURCE_REF}"
+          checkout_target="${INPUT_SOURCE_REF:-${INPUT_SOURCE_SHA}}"
+          git checkout "${checkout_target}"
           chmod +x ./mvnw
           snapshot_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r')"
           if [ -z "${snapshot_version}" ]; then
@@ -191,11 +202,19 @@ jobs:
           mkdir -p pr-history/runs
           repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
 
-          if git ls-remote --exit-code --heads "$repo_url" benchmark-data >/dev/null 2>&1; then
-            git clone --depth 1 --branch benchmark-data "$repo_url" benchmark-history
-            if [ -d benchmark-history/runs ]; then
-              cp -R benchmark-history/runs/. pr-history/runs/
-            fi
+          if git ls-remote --exit-code --heads "$repo_url" "${BENCHMARK_DATA_BRANCH}" >/dev/null 2>&1; then
+            git clone --depth 1 --branch "${BENCHMARK_DATA_BRANCH}" "$repo_url" benchmark-history
+          else
+            mkdir benchmark-history
+            pushd benchmark-history >/dev/null
+            git init
+            git checkout -b "${BENCHMARK_DATA_BRANCH}"
+            git remote add origin "$repo_url"
+            popd >/dev/null
+          fi
+
+          if [ -d benchmark-history/runs ]; then
+            cp -R benchmark-history/runs/. pr-history/runs/
           fi
 
           RUN_ID="$(python3 -c 'import json; print(json.load(open("current-run/run-metadata.json"))["runId"])')"
@@ -206,6 +225,95 @@ jobs:
             --history-root pr-history/runs \
             --output-dir pr-site \
             --repository "${GITHUB_REPOSITORY}"
+
+      - name: Resolve PR preview target
+        id: preview_target
+        run: |
+          set -euo pipefail
+
+          pr_number="${INPUT_SOURCE_PR_NUMBER:-${INPUT_TRIGGER_PR_NUMBER:-${GH_EVENT_PR_NUMBER:-}}}"
+          run_id="$(python3 -c 'import json; print(json.load(open("current-run/run-metadata.json"))["runId"])')"
+
+          if [ -z "${pr_number}" ]; then
+            echo "No PR number resolved; skipping PR preview publishing."
+            echo "has_pr_number=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          preview_root="pr-${pr_number}"
+          preview_run_dir="${preview_root}/${run_id}"
+          preview_latest_dir="${preview_root}/latest"
+          base_url="${PR_PREVIEW_BASE_URL%/}"
+
+          echo "has_pr_number=true" >> "$GITHUB_OUTPUT"
+          echo "pr_number=${pr_number}" >> "$GITHUB_OUTPUT"
+          echo "preview_root=${preview_root}" >> "$GITHUB_OUTPUT"
+          echo "preview_run_dir=${preview_run_dir}" >> "$GITHUB_OUTPUT"
+          echo "preview_latest_dir=${preview_latest_dir}" >> "$GITHUB_OUTPUT"
+          echo "preview_run_url=${base_url}/${preview_run_dir}/" >> "$GITHUB_OUTPUT"
+          echo "preview_latest_url=${base_url}/${preview_latest_dir}/" >> "$GITHUB_OUTPUT"
+
+      - name: Publish PR preview content to benchmark-data branch
+        if: ${{ steps.preview_target.outputs.has_pr_number == 'true' }}
+        run: |
+          set -euo pipefail
+
+          preview_run_path="pr-previews/${{ steps.preview_target.outputs.preview_run_dir }}"
+          preview_latest_path="pr-previews/${{ steps.preview_target.outputs.preview_latest_dir }}"
+          preview_root_path="pr-previews/${{ steps.preview_target.outputs.preview_root }}"
+
+          rm -rf "benchmark-history/${preview_run_path}" "benchmark-history/${preview_latest_path}"
+          mkdir -p "benchmark-history/${preview_run_path}" "benchmark-history/${preview_latest_path}"
+          cp -R pr-site/. "benchmark-history/${preview_run_path}/"
+          cp -R pr-site/. "benchmark-history/${preview_latest_path}/"
+
+          pushd benchmark-history >/dev/null
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${preview_root_path}"
+
+          if git diff --cached --quiet; then
+            echo "No preview page changes to commit."
+          else
+            git commit -m "Update PR preview ${preview_root_path}"
+            git push origin HEAD:"${BENCHMARK_DATA_BRANCH}"
+          fi
+          popd >/dev/null
+
+      - name: Build deployable site (main + PR previews)
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-history/runs
+          python3 scripts/generate_pages.py \
+            --history-root benchmark-history/runs \
+            --output-dir site \
+            --repository "${GITHUB_REPOSITORY}"
+
+          if [ -d benchmark-history/pr-previews ]; then
+            mkdir -p site/pr-previews
+            cp -R benchmark-history/pr-previews/. site/pr-previews/
+          fi
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Add PR preview links to job summary
+        if: ${{ steps.preview_target.outputs.has_pr_number == 'true' }}
+        run: |
+          {
+            echo "### PR Preview Links"
+            echo "- Latest: ${{ steps.preview_target.outputs.preview_latest_url }}"
+            echo "- This run: ${{ steps.preview_target.outputs.preview_run_url }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Add summary to job page
         run: |
@@ -229,13 +337,16 @@ jobs:
             const [owner, repo] = process.env.INPUT_TRIGGER_REPOSITORY.split("/");
             const prNumber = parseInt(process.env.INPUT_TRIGGER_PR_NUMBER, 10);
             const runUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            const previewUrl = `${{ steps.preview_target.outputs.preview_latest_url }}`;
+            const previewLine = previewUrl ? `- [View PR preview page](${previewUrl})\n` : "";
             await github.rest.issues.createComment({
               owner,
               repo,
               issue_number: prNumber,
               body:
                 "Performance benchmark completed successfully.\n\n" +
-                `- [View benchmark results](${runUrl})`,
+                `- [View benchmark workflow run](${runUrl})\n` +
+                previewLine,
             });
 
       - name: Comment benchmark failure on triggering PR
