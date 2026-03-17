@@ -28,12 +28,44 @@ on:
         required: false
         default: '4'
         type: string
+      sourceTarballUrl:
+        description: 'Optional tarball URL for immutable Javalin source snapshot to benchmark'
+        required: false
+        type: string
+      sourceRepository:
+        description: 'Optional source repository for snapshot metadata'
+        required: false
+        type: string
+      sourceSha:
+        description: 'Optional source commit SHA for snapshot metadata'
+        required: false
+        type: string
+      sourceRef:
+        description: 'Optional source ref for snapshot metadata'
+        required: false
+        type: string
+      sourcePrNumber:
+        description: 'Optional source PR number for snapshot metadata'
+        required: false
+        type: string
+      triggerRepository:
+        description: 'Optional triggering repository'
+        required: false
+        type: string
+      triggerPrNumber:
+        description: 'Optional triggering PR number'
+        required: false
+        type: string
+      triggerPrUrl:
+        description: 'Optional triggering PR URL'
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: benchmark-pr-${{ github.ref }}
+  group: benchmark-pr-${{ github.event.pull_request.number || github.event.inputs.sourcePrNumber || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -45,7 +77,15 @@ jobs:
       INPUT_ITERATION_TIME_MS: ${{ github.event.inputs.iterationTimeMs }}
       INPUT_FORKS: ${{ github.event.inputs.forks }}
       INPUT_THREADS: ${{ github.event.inputs.threads }}
-      PR_OR_RUN_ID: ${{ github.event.pull_request.number || github.run_id }}
+      INPUT_SOURCE_TARBALL_URL: ${{ github.event.inputs.sourceTarballUrl }}
+      INPUT_SOURCE_REPOSITORY: ${{ github.event.inputs.sourceRepository }}
+      INPUT_SOURCE_SHA: ${{ github.event.inputs.sourceSha }}
+      INPUT_SOURCE_REF: ${{ github.event.inputs.sourceRef }}
+      INPUT_SOURCE_PR_NUMBER: ${{ github.event.inputs.sourcePrNumber }}
+      INPUT_TRIGGER_REPOSITORY: ${{ github.event.inputs.triggerRepository }}
+      INPUT_TRIGGER_PR_NUMBER: ${{ github.event.inputs.triggerPrNumber }}
+      INPUT_TRIGGER_PR_URL: ${{ github.event.inputs.triggerPrUrl }}
+      PR_OR_RUN_ID: ${{ github.event.pull_request.number || github.event.inputs.sourcePrNumber || github.run_id }}
       GITHUB_REPOSITORY: ${{ github.repository }}
       GITHUB_WORKFLOW: ${{ github.workflow }}
       GITHUB_RUN_NUMBER: ${{ github.run_number }}
@@ -69,6 +109,38 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install Javalin source snapshot to Maven local (optional)
+        id: source_snapshot
+        if: ${{ env.INPUT_SOURCE_TARBALL_URL != '' }}
+        run: |
+          set -euo pipefail
+
+          tmp_root="$(mktemp -d)"
+          tarball_path="${tmp_root}/source.tar.gz"
+          source_dir="${tmp_root}/source"
+
+          curl -fsSL "${INPUT_SOURCE_TARBALL_URL}" -o "${tarball_path}"
+          mkdir -p "${source_dir}"
+          tar -xzf "${tarball_path}" -C "${source_dir}" --strip-components=1
+
+          if [ ! -f "${source_dir}/pom.xml" ]; then
+            echo "Snapshot tarball did not contain a Maven root (pom.xml missing)." >&2
+            exit 1
+          fi
+
+          pushd "${source_dir}" >/dev/null
+          chmod +x ./mvnw
+
+          snapshot_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r')"
+          if [ -z "${snapshot_version}" ]; then
+            echo "Could not resolve snapshot project.version." >&2
+            exit 1
+          fi
+          echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
+
+          ./mvnw -DRunningOnCi=true -DskipTests=true clean install --file pom.xml --batch-mode
+          popd >/dev/null
+
       - name: Run PR benchmark suite
         run: |
           set -euo pipefail
@@ -77,10 +149,19 @@ jobs:
           RUN_TIMESTAMP_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           VERSIONS_JSON="$(python3 scripts/resolve_versions.py --raw "${INPUT_VERSIONS:-}" --config config/pr-versions.txt)"
+          SNAPSHOT_VERSION="${{ steps.source_snapshot.outputs.snapshot_version }}"
+
+          if [ -n "${SNAPSHOT_VERSION:-}" ]; then
+            VERSIONS_JSON="$(python3 -c 'import json, sys; versions = json.loads(sys.argv[1]); snapshot = sys.argv[2]; versions.append(snapshot) if snapshot and snapshot not in versions else None; print(json.dumps(versions))' "${VERSIONS_JSON}" "${SNAPSHOT_VERSION}")"
+          fi
+
           ITERATIONS="${INPUT_ITERATIONS:-10}"
           ITERATION_TIME_MS="${INPUT_ITERATION_TIME_MS:-1000}"
           FORKS="${INPUT_FORKS:-2}"
           THREADS="${INPUT_THREADS:-4}"
+          BENCHMARK_REPOSITORY="${INPUT_SOURCE_REPOSITORY:-${GITHUB_REPOSITORY}}"
+          BENCHMARK_GIT_SHA="${INPUT_SOURCE_SHA:-${GITHUB_SHA}}"
+          BENCHMARK_GIT_REF="${INPUT_SOURCE_REF:-${GITHUB_REF_NAME}}"
 
           mkdir -p current-run/results
           python3 scripts/collect_runner_info.py current-run/runner-info.json
@@ -93,12 +174,20 @@ jobs:
             --iteration-time-ms "${ITERATION_TIME_MS}" \
             --forks "${FORKS}" \
             --threads "${THREADS}" \
-            --repository "${GITHUB_REPOSITORY}" \
+            --repository "${BENCHMARK_REPOSITORY}" \
             --workflow "${GITHUB_WORKFLOW}" \
             --run-number "${GITHUB_RUN_NUMBER}" \
             --run-attempt "${GITHUB_RUN_ATTEMPT}" \
-            --git-sha "${GITHUB_SHA}" \
-            --git-ref "${GITHUB_REF_NAME}"
+            --git-sha "${BENCHMARK_GIT_SHA}" \
+            --git-ref "${BENCHMARK_GIT_REF}" \
+            --source-repository "${INPUT_SOURCE_REPOSITORY:-}" \
+            --source-sha "${INPUT_SOURCE_SHA:-}" \
+            --source-ref "${INPUT_SOURCE_REF:-}" \
+            --source-pr-number "${INPUT_SOURCE_PR_NUMBER:-}" \
+            --source-tarball-url "${INPUT_SOURCE_TARBALL_URL:-}" \
+            --trigger-repository "${INPUT_TRIGGER_REPOSITORY:-}" \
+            --trigger-pr-number "${INPUT_TRIGGER_PR_NUMBER:-}" \
+            --trigger-pr-url "${INPUT_TRIGGER_PR_URL:-}"
 
           python3 scripts/json_to_lines.py "${VERSIONS_JSON}" > /tmp/versions.txt
 
