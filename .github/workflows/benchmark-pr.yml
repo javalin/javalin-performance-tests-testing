@@ -88,6 +88,7 @@ jobs:
       GITHUB_SHA: ${{ github.sha }}
       GITHUB_REF_NAME: ${{ github.ref_name }}
       GITHUB_TOKEN: ${{ github.token }}
+      PERFORMANCE_TESTS_TRIGGER_TOKEN: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -218,3 +219,39 @@ jobs:
             current-run
             pr-site
           if-no-files-found: error
+
+      - name: Comment benchmark success on triggering PR
+        if: success() && env.INPUT_TRIGGER_PR_NUMBER != ''
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.INPUT_TRIGGER_REPOSITORY.split("/");
+            const prNumber = parseInt(process.env.INPUT_TRIGGER_PR_NUMBER, 10);
+            const runUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body:
+                "Performance benchmark completed successfully.\n\n" +
+                `- [View benchmark results](${runUrl})`,
+            });
+
+      - name: Comment benchmark failure on triggering PR
+        if: failure() && env.INPUT_TRIGGER_PR_NUMBER != ''
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.INPUT_TRIGGER_REPOSITORY.split("/");
+            const prNumber = parseInt(process.env.INPUT_TRIGGER_PR_NUMBER, 10);
+            const runUrl = `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body:
+                "Performance benchmark failed.\n\n" +
+                `- [View workflow run](${runUrl})`,
+            });
