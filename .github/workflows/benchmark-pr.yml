@@ -28,10 +28,6 @@ on:
         required: false
         default: '4'
         type: string
-      sourceTarballUrl:
-        description: 'Optional tarball URL for immutable Javalin source snapshot to benchmark'
-        required: false
-        type: string
       sourceRepository:
         description: 'Optional source repository for snapshot metadata'
         required: false
@@ -77,7 +73,6 @@ jobs:
       INPUT_ITERATION_TIME_MS: ${{ github.event.inputs.iterationTimeMs }}
       INPUT_FORKS: ${{ github.event.inputs.forks }}
       INPUT_THREADS: ${{ github.event.inputs.threads }}
-      INPUT_SOURCE_TARBALL_URL: ${{ github.event.inputs.sourceTarballUrl }}
       INPUT_SOURCE_REPOSITORY: ${{ github.event.inputs.sourceRepository }}
       INPUT_SOURCE_SHA: ${{ github.event.inputs.sourceSha }}
       INPUT_SOURCE_REF: ${{ github.event.inputs.sourceRef }}
@@ -111,33 +106,20 @@ jobs:
 
       - name: Install Javalin source snapshot to Maven local (optional)
         id: source_snapshot
-        if: ${{ env.INPUT_SOURCE_TARBALL_URL != '' }}
+        if: ${{ env.INPUT_SOURCE_REPOSITORY != '' && env.INPUT_SOURCE_SHA != '' }}
         run: |
           set -euo pipefail
-
-          tmp_root="$(mktemp -d)"
-          tarball_path="${tmp_root}/source.tar.gz"
-          source_dir="${tmp_root}/source"
-
-          curl -fsSL "${INPUT_SOURCE_TARBALL_URL}" -o "${tarball_path}"
-          mkdir -p "${source_dir}"
-          tar -xzf "${tarball_path}" -C "${source_dir}" --strip-components=1
-
-          if [ ! -f "${source_dir}/pom.xml" ]; then
-            echo "Snapshot tarball did not contain a Maven root (pom.xml missing)." >&2
-            exit 1
-          fi
-
+          source_dir="$(mktemp -d)"
+          git clone "https://github.com/${INPUT_SOURCE_REPOSITORY}.git" "${source_dir}"
           pushd "${source_dir}" >/dev/null
+          git checkout "${INPUT_SOURCE_SHA}"
           chmod +x ./mvnw
-
           snapshot_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r')"
           if [ -z "${snapshot_version}" ]; then
             echo "Could not resolve snapshot project.version." >&2
             exit 1
           fi
           echo "snapshot_version=${snapshot_version}" >> "$GITHUB_OUTPUT"
-
           ./mvnw -DRunningOnCi=true -DskipTests=true clean install --file pom.xml --batch-mode
           popd >/dev/null
 
@@ -184,7 +166,6 @@ jobs:
             --source-sha "${INPUT_SOURCE_SHA:-}" \
             --source-ref "${INPUT_SOURCE_REF:-}" \
             --source-pr-number "${INPUT_SOURCE_PR_NUMBER:-}" \
-            --source-tarball-url "${INPUT_SOURCE_TARBALL_URL:-}" \
             --trigger-repository "${INPUT_TRIGGER_REPOSITORY:-}" \
             --trigger-pr-number "${INPUT_TRIGGER_PR_NUMBER:-}" \
             --trigger-pr-url "${INPUT_TRIGGER_PR_URL:-}"
