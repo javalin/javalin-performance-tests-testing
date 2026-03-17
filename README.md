@@ -192,11 +192,11 @@ Triggers:
 - On every pull request.
 - Manual `workflow_dispatch` with optional versions and tuning overrides.
 - Manual `workflow_dispatch` can also benchmark an immutable source snapshot by passing:
-  - `sourceTarballUrl` (required for snapshot mode),
-  - optional `sourceRepository`, `sourceSha`, `sourceRef`, `sourcePrNumber` for metadata.
+  - `sourceRepository` + `sourceSha` (required for snapshot mode),
+  - optional `sourceRef`, `sourcePrNumber`, `triggerRepository`, `triggerPrNumber`, `triggerPrUrl` for metadata and PR callback context.
 
 Snapshot mode behavior:
-- Downloads the tarball snapshot and installs Javalin to Maven local from that source.
+- Clones `sourceRepository`, checks out `sourceSha`, and installs Javalin to Maven local from that source.
 - Detects `project.version` from the snapshot and adds it to the benchmark versions for the run.
 
 Defaults:
@@ -206,5 +206,20 @@ Defaults:
 Output:
 - uploads raw benchmark JSON + generated trend report as workflow artifact,
 - adds a markdown benchmark summary table to the job summary.
+- publishes PR preview pages into the same GitHub Pages site under:
+  - `/pr-previews/pr-<number>/latest/` (stable link),
+  - `/pr-previews/pr-<number>/<run-id>/` (run-specific link).
+- keeps preview content in the `benchmark-data` branch under `pr-previews/` and deploys main + preview pages together.
+
+Optional repository variables:
+- `BENCHMARK_DATA_BRANCH` (default `benchmark-data`)
+- `PR_PREVIEW_PAGES_BASE_URL` (default `https://javalin.github.io/javalin-performance-tests-testing/pr-previews`)
+
+Cleanup:
+- Workflow `.github/workflows/cleanup-pr-preview.yml` deletes `pr-previews/pr-<number>/` from `benchmark-data`,
+  then redeploys Pages so closed-PR previews disappear.
+- Intended to be dispatched from the source repository on `pull_request.closed`.
+
+Old dedicated preview-repo model is no longer required.
 
 The generated website also includes a plain-language “How To Read This” section.

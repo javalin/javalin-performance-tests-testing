@@ -1,0 +1,126 @@
+name: Cleanup PR Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      prNumber:
+        description: 'PR number whose preview should be removed'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      INPUT_PR_NUMBER: ${{ github.event.inputs.prNumber }}
+      BENCHMARK_DATA_BRANCH: ${{ vars.BENCHMARK_DATA_BRANCH || 'benchmark-data' }}
+      PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_PAGES_BASE_URL || 'https://javalin.github.io/javalin-performance-tests-testing/pr-previews' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Validate inputs
+        run: |
+          set -euo pipefail
+          case "${INPUT_PR_NUMBER}" in
+            ''|*[!0-9]*)
+              echo "Invalid prNumber: ${INPUT_PR_NUMBER}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Remove preview directory from benchmark-data branch
+        id: cleanup_preview
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          repo_url="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          preview_dir="pr-previews/pr-${INPUT_PR_NUMBER}"
+
+          if ! git ls-remote --exit-code --heads "$repo_url" "${BENCHMARK_DATA_BRANCH}" >/dev/null 2>&1; then
+            echo "History branch ${BENCHMARK_DATA_BRANCH} does not exist; nothing to clean."
+            echo "deleted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git clone --depth 1 --branch "${BENCHMARK_DATA_BRANCH}" "$repo_url" benchmark-history
+          pushd benchmark-history >/dev/null
+
+          if [ ! -d "${preview_dir}" ]; then
+            echo "Preview path ${preview_dir} does not exist; nothing to clean."
+            echo "deleted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          rm -rf "${preview_dir}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A "${preview_dir}"
+
+          if git diff --cached --quiet; then
+            echo "No preview deletions to commit."
+            echo "deleted=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "Remove PR preview ${preview_dir}"
+          git push origin HEAD:"${BENCHMARK_DATA_BRANCH}"
+          echo "deleted=true" >> "$GITHUB_OUTPUT"
+          popd >/dev/null
+
+      - name: Build deployable site (main + PR previews)
+        if: ${{ steps.cleanup_preview.outputs.deleted == 'true' }}
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p benchmark-history/runs
+          python3 scripts/generate_pages.py \
+            --history-root benchmark-history/runs \
+            --output-dir site \
+            --repository "${GITHUB_REPOSITORY}"
+
+          if [ -d benchmark-history/pr-previews ]; then
+            mkdir -p site/pr-previews
+            cp -R benchmark-history/pr-previews/. site/pr-previews/
+          fi
+
+      - name: Configure Pages
+        if: ${{ steps.cleanup_preview.outputs.deleted == 'true' }}
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: ${{ steps.cleanup_preview.outputs.deleted == 'true' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        if: ${{ steps.cleanup_preview.outputs.deleted == 'true' }}
+        uses: actions/deploy-pages@v4
+
+      - name: Add cleanup summary
+        run: |
+          {
+            echo "### PR Preview Cleanup"
+            echo "- PR: #${INPUT_PR_NUMBER}"
+            if [ "${{ steps.cleanup_preview.outputs.deleted }}" = "true" ]; then
+              echo "- Removed path: \`pr-previews/pr-${INPUT_PR_NUMBER}\`"
+              echo "- URL invalidated: ${PR_PREVIEW_BASE_URL%/}/pr-${INPUT_PR_NUMBER}/latest/"
+            else
+              echo "- Nothing removed."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
