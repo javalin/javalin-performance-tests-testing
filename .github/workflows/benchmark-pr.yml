@@ -112,7 +112,7 @@ jobs:
           source_dir="$(mktemp -d)"
           git clone "https://github.com/${INPUT_SOURCE_REPOSITORY}.git" "${source_dir}"
           pushd "${source_dir}" >/dev/null
-          git checkout "${INPUT_SOURCE_SHA}"
+          git checkout "${INPUT_SOURCE_REF}"
           chmod +x ./mvnw
           snapshot_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tail -n 1 | tr -d '\r')"
           if [ -z "${snapshot_version}" ]; then
