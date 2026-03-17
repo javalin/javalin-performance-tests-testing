@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>javalin/javalin-performance-tests-testing benchmark report</title>
+  <style>
+    :root {
+      --bg: #e4eef7;
+      --panel: #ffffff;
+      --ink: #122235;
+      --muted: #4e657f;
+      --line: #d2e1f0;
+      --accent: #1f7a8c;
+      --winner-bg: #eaf7ef;
+      --winner-border: #2c7a53;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 0% 0%, #cfe4f7 0%, var(--bg) 42%);
+    }
+    .layout {
+      width: 100%;
+      margin: 0;
+      display: grid;
+      grid-template-columns: 270px minmax(0, 1fr);
+      gap: 1rem;
+      padding: 1rem 1.2rem;
+    }
+    .sidebar { position: sticky; top: .8rem; height: fit-content; }
+    .sidebar-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: .9rem;
+    }
+    .sidebar-card h2 { margin: 0 0 .35rem; font-size: 1rem; }
+    .sidebar-card p { margin: 0 0 .75rem; color: var(--muted); font-size: .85rem; line-height: 1.35; }
+    .run-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; max-height: 80vh; overflow: auto; }
+    .run-list a {
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: .5rem .55rem;
+      background: #f9fcff;
+    }
+    .run-list a.active { border-color: var(--accent); background: #e8f4fb; }
+    .run-title { display: block; font-size: .84rem; font-weight: 600; }
+    .run-sub { display: block; font-size: .72rem; color: var(--muted); margin-top: .15rem; }
+    .content { min-width: 0; }
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: .95rem;
+    }
+    h1 { margin: 0 0 .35rem; font-size: 1.75rem; }
+    .meta { color: var(--muted); font-size: .92rem; margin-bottom: .2rem; }
+    .meta strong { color: var(--ink); }
+    .cards {
+      display: grid;
+      gap: .7rem;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      margin-top: .8rem;
+    }
+    .card {
+      background: #f7fbff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: .7rem;
+      min-width: 0;
+    }
+    .label { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .2rem; }
+    .value { font-family: 'IBM Plex Mono', 'Consolas', monospace; font-size: .84rem; line-height: 1.38; word-break: break-word; }
+    .help-card {
+      margin-top: .75rem;
+      background: #f5fbff;
+      border: 1px solid #c8dfef;
+      border-radius: 10px;
+      padding: .85rem .95rem;
+    }
+    .help-card h2 { margin: 0 0 .45rem; font-size: 1.05rem; }
+    .help-card p { margin: .25rem 0; line-height: 1.4; }
+    .help-card code { background: #e7f2fb; border-radius: 4px; padding: 0 .25rem; }
+    h2 { margin: 1rem 0 .5rem; font-size: 1.2rem; }
+    h3 { margin: 0 0 .45rem; font-size: .95rem; }
+    .summary-wrap {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: auto;
+      max-height: 64vh;
+      background: var(--panel);
+      width: 100%;
+    }
+    .tab-shell {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: .75rem;
+      margin-bottom: .9rem;
+    }
+    .tab-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .5rem;
+      margin-bottom: .65rem;
+    }
+    .tab-button {
+      border: 1px solid #b8d2e8;
+      background: #f4faff;
+      color: #21405e;
+      border-radius: 999px;
+      padding: .3rem .72rem;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tab-button.active {
+      border-color: var(--accent);
+      background: #deeff8;
+      color: #173752;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .tab-panel h3 { margin-bottom: .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+    th, td {
+      border-bottom: 1px solid var(--line);
+      padding: .45rem .4rem;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    th { position: sticky; top: 0; background: #e9f3fb; z-index: 1; }
+    .winner-row { background: var(--winner-bg); }
+    .winner-row td:first-child { border-left: 4px solid var(--winner-border); }
+    .cobest-row { background: #f9f5e8; }
+    .cobest-row td:first-child { border-left: 4px solid #a6782f; }
+    .winner-badge {
+      display: inline-block;
+      border: 1px solid var(--winner-border);
+      border-radius: 999px;
+      padding: .08rem .44rem;
+      font-size: .72rem;
+      font-weight: 700;
+      background: #dff1e8;
+      color: #184d33;
+    }
+    .cobest-badge {
+      display: inline-block;
+      border: 1px solid #8a6a2d;
+      border-radius: 999px;
+      padding: .08rem .44rem;
+      font-size: .72rem;
+      font-weight: 700;
+      background: #f2e9cf;
+      color: #5f4a1f;
+    }
+    .chart-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: .75rem;
+    }
+    .chart-host {
+      width: 100%;
+      height: 340px;
+      min-height: 240px;
+    }
+    .panel-chart { margin-top: .7rem; }
+    .section-note {
+      margin: .2rem 0 .65rem;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .overview-note {
+      margin: .2rem 0 .65rem;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .overview-wrap {
+      max-height: 58vh;
+    }
+    .overview-divider td {
+      background: #f3f8fd;
+      color: #294863;
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .02em;
+      border-top: 2px solid #c7d8e9;
+      border-bottom: 1px solid #dbe8f3;
+      padding-top: .3rem;
+      padding-bottom: .3rem;
+    }
+    footer { margin-top: .85rem; color: var(--muted); font-size: .84rem; }
+    @media (max-width: 1150px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; }
+      .run-list { max-height: none; }
+      .cards { grid-template-columns: repeat(2, minmax(170px, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .cards { grid-template-columns: 1fr; }
+      th, td { font-size: .8rem; }
+      h1 { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class='sidebar'><div class='sidebar-card'><h2>Reports</h2><p>Navigate weekly snapshots. Each snapshot includes history up to that week.</p><ul class='run-list'><li><a class='' href='../index.html'><span class='run-title'>Latest (full history)</span><span class='run-sub'>pr-2-1</span></a></li>
+<li><a class='' href='../runs/pr-2-1.html'><span class='run-title'>pr-2-1</span><span class='run-sub'>2026-03-17</span></a></li>
+<li><a class='' href='../runs/20260317T050257Z-23179276999-1.html'><span class='run-title'>20260317T050257Z-23179276999-1</span><span class='run-sub'>2026-03-17</span></a></li>
+<li><a class='' href='../runs/20260316T052453Z-23129229628-1.html'><span class='run-title'>20260316T052453Z-23129229628-1</span><span class='run-sub'>2026-03-16</span></a></li>
+<li><a class='' href='../runs/20260315T051450Z-23103976566-1.html'><span class='run-title'>20260315T051450Z-23103976566-1</span><span class='run-sub'>2026-03-15</span></a></li>
+<li><a class='' href='../runs/20260314T045319Z-23080822282-1.html'><span class='run-title'>20260314T045319Z-23080822282-1</span><span class='run-sub'>2026-03-14</span></a></li>
+<li><a class='' href='../runs/20260313T045532Z-23036831902-1.html'><span class='run-title'>20260313T045532Z-23036831902-1</span><span class='run-sub'>2026-03-13</span></a></li>
+<li><a class='' href='../runs/20260312T045742Z-22987281142-1.html'><span class='run-title'>20260312T045742Z-22987281142-1</span><span class='run-sub'>2026-03-12</span></a></li>
+<li><a class='' href='../runs/20260311T045321Z-22937391297-1.html'><span class='run-title'>20260311T045321Z-22937391297-1</span><span class='run-sub'>2026-03-11</span></a></li>
+<li><a class='' href='../runs/20260310T045156Z-22887695550-1.html'><span class='run-title'>20260310T045156Z-22887695550-1</span><span class='run-sub'>2026-03-10</span></a></li>
+<li><a class='' href='../runs/20260309T050302Z-22839169946-1.html'><span class='run-title'>20260309T050302Z-22839169946-1</span><span class='run-sub'>2026-03-09</span></a></li>
+<li><a class='' href='../runs/20260308T045339Z-22814245404-1.html'><span class='run-title'>20260308T045339Z-22814245404-1</span><span class='run-sub'>2026-03-08</span></a></li>
+<li><a class='' href='../runs/20260307T044103Z-22792210696-1.html'><span class='run-title'>20260307T044103Z-22792210696-1</span><span class='run-sub'>2026-03-07</span></a></li>
+<li><a class='' href='../runs/20260306T045153Z-22749626009-1.html'><span class='run-title'>20260306T045153Z-22749626009-1</span><span class='run-sub'>2026-03-06</span></a></li>
+<li><a class='' href='../runs/20260305T045606Z-22702996653-1.html'><span class='run-title'>20260305T045606Z-22702996653-1</span><span class='run-sub'>2026-03-05</span></a></li>
+<li><a class='' href='../runs/20260304T045055Z-22655593744-1.html'><span class='run-title'>20260304T045055Z-22655593744-1</span><span class='run-sub'>2026-03-04</span></a></li>
+<li><a class='' href='../runs/20260303T045657Z-22608974505-1.html'><span class='run-title'>20260303T045657Z-22608974505-1</span><span class='run-sub'>2026-03-03</span></a></li>
+<li><a class='' href='../runs/20260302T045841Z-22562080486-1.html'><span class='run-title'>20260302T045841Z-22562080486-1</span><span class='run-sub'>2026-03-02</span></a></li>
+<li><a class='' href='../runs/20260301T050242Z-22536414847-1.html'><span class='run-title'>20260301T050242Z-22536414847-1</span><span class='run-sub'>2026-03-01</span></a></li>
+<li><a class='' href='../runs/20260228T043402Z-22513440709-1.html'><span class='run-title'>20260228T043402Z-22513440709-1</span><span class='run-sub'>2026-02-28</span></a></li>
+<li><a class='' href='../runs/20260227T045637Z-22473403786-1.html'><span class='run-title'>20260227T045637Z-22473403786-1</span><span class='run-sub'>2026-02-27</span></a></li>
+<li><a class='' href='../runs/20260226T050223Z-22428614257-1.html'><span class='run-title'>20260226T050223Z-22428614257-1</span><span class='run-sub'>2026-02-26</span></a></li>
+<li><a class='' href='../runs/20260225T050422Z-22383048608-1.html'><span class='run-title'>20260225T050422Z-22383048608-1</span><span class='run-sub'>2026-02-25</span></a></li>
+<li><a class='' href='../runs/20260223T051003Z-22293740286-1.html'><span class='run-title'>20260223T051003Z-22293740286-1</span><span class='run-sub'>2026-02-23</span></a></li>
+<li><a class='' href='../runs/20260222T162014Z-22280771521-1.html'><span class='run-title'>20260222T162014Z-22280771521-1</span><span class='run-sub'>2026-02-22</span></a></li>
+<li><a class='active' href='../runs/20260222T140011Z-22278559449-1.html'><span class='run-title'>20260222T140011Z-22278559449-1</span><span class='run-sub'>2026-02-22</span></a></li>
+<li><a class='' href='../runs/20260222T010326Z-22267727929-1.html'><span class='run-title'>20260222T010326Z-22267727929-1</span><span class='run-sub'>2026-02-22</span></a></li></ul></div></aside>
+    <main class="content">
+      <section class="header">
+        <h1>Javalin Performance Benchmarks</h1>
+        <div class="meta">Repository: <strong>javalin/javalin-performance-tests-testing</strong></div>
+        <div class="meta">View: <strong>Snapshot for 20260222T140011Z-22278559449-1</strong> | Generated: 2026-03-17 21:21:29 UTC | Latest run in history: pr-2-1</div>
+
+        <div class="cards">
+          <div class="card">
+            <div class="label">Benchmark Settings</div>
+            <div class="value">versionCount=5<br>versions=6.5.0, 6.6.0, 6.7.0, 7.0.0, 7.0.1-SNAPSHOT<br>iterations=10<br>iterationTimeMs=1000<br>forks=2<br>threads=4</div>
+          </div>
+          <div class="card">
+            <div class="label">Runner Image</div>
+            <div class="value">ImageOS=ubuntu24<br>ImageVersion=20260201.15.1<br>Runner=GitHub Actions 1000007371<br>OS=Linux/X64</div>
+          </div>
+          <div class="card">
+            <div class="label">CPU</div>
+            <div class="value">model=AMD EPYC 7763 64-Core Processor<br>nproc=4<br>cores=4<br>maxMHz=</div>
+          </div>
+          <div class="card">
+            <div class="label">Memory</div>
+            <div class="value">memTotal=16378772 kB<br>swapTotal=3145724 kB<br>cgroupCpuMax=&lt;not found&gt;</div>
+          </div>
+        </div>
+
+        
+      <section class='help-card'>
+        <h2>How To Read This</h2>
+        <p>Pretend each benchmark is a race. The fastest racer wins.</p>
+        <p><strong>Higher score is better.</strong> Score is <code>ops/ms</code>: how many requests finished in one millisecond.</p>
+        <p><strong>Benchmark Settings</strong> show what this specific run actually executed.</p>
+        <p><strong>&#9733; Best</strong> marks the strict top score in that benchmark.</p>
+        <p><strong>Near best</strong> means the score is within a CV/error uncertainty band of the top score.</p>
+        <p><strong>Delta vs Prev %</strong> compares this run to the previous run for the same version and benchmark.</p>
+        <p><strong>CV%</strong> is consistency across recent runs (not the same as Delta vs Prev): lower means more stable numbers over time.</p>
+        <p><strong>Chart tips:</strong> hover a line point to see timestamp + exact score.</p>
+      </section>
+    
+      </section>
+
+      <h2>Per-Benchmark Results</h2>
+      <p class="section-note">Each tab shows one benchmark with the latest per-version table and the trend chart directly below it.</p>
+      <section class='tab-shell'><div class='tab-buttons'><button type='button' class='tab-button active' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-hello' aria-selected='true'>Hello / Lifecycle: hello</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-jsonserialization100kb' aria-selected='false'>JSON Serialization: jsonSerialization100kb</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-jsonserialization1mb' aria-selected='false'>JSON Serialization: jsonSerialization1mb</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-jsonserializationsmall' aria-selected='false'>JSON Serialization: jsonSerializationSmall</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-payload100kb' aria-selected='false'>Payload Size: payload100kb</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-payload1mb' aria-selected='false'>Payload Size: payload1mb</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-payloadempty' aria-selected='false'>Payload Size: payloadEmpty</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-routes10' aria-selected='false'>Route Count: routes10</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-routes100' aria-selected='false'>Route Count: routes100</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-routes1000' aria-selected='false'>Route Count: routes1000</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-staticfile100kb' aria-selected='false'>Static File: staticFile100kb</button><button type='button' class='tab-button' data-tab-button='benchmark-tab-javalin-performance-javalinbenchmark-staticfile1mb' aria-selected='false'>Static File: staticFile1mb</button></div><div class='tab-panels'><section class='tab-panel active' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-hello'><h3>Hello / Lifecycle: javalin.performance.JavalinBenchmark.hello</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>5.5275</td><td>0.0198</td><td>ops/ms</td><td></td><td>44.51</td><td>13.18</td><td>5.5275</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>5.2895</td><td>0.1320</td><td>ops/ms</td><td></td><td>46.90</td><td>13.27</td><td>5.2895</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>5.5517</td><td>0.0712</td><td>ops/ms</td><td></td><td>44.26</td><td>13.18</td><td>5.5517</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.7723</td><td>0.1631</td><td>ops/ms</td><td>-17.62</td><td>1.89</td><td>18.88</td><td>10.8172</td><td>1.4777</td><td>13.66</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>9.9608</td><td>0.0501</td><td>ops/ms</td><td>-16.87</td><td>0.00</td><td>18.43</td><td>10.9717</td><td>1.4297</td><td>13.03</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.7883</td><td>0.0841</td><td>ops/ms</td><td>-13.51</td><td>1.73</td><td>16.58</td><td>10.5530</td><td>1.0814</td><td>10.25</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.0372</td><td>0.0528</td><td>ops/ms</td><td></td><td>9.27</td><td>13.18</td><td>9.0372</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>8.9883</td><td>0.0664</td><td>ops/ms</td><td></td><td>9.76</td><td>13.18</td><td>8.9883</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.hello'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-jsonserialization100kb' hidden><h3>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerialization100kb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>2.5721</td><td>0.0208</td><td>ops/ms</td><td></td><td>3.42</td><td>2.83</td><td>2.5721</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>2.5665</td><td>0.0176</td><td>ops/ms</td><td></td><td>3.63</td><td>2.83</td><td>2.5665</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>2.5483</td><td>0.0186</td><td>ops/ms</td><td></td><td>4.31</td><td>2.83</td><td>2.5483</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>2.6579</td><td>0.0382</td><td>ops/ms</td><td>0.95</td><td>0.20</td><td>2.83</td><td>2.6454</td><td>0.0176</td><td>0.67</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>2.6484</td><td>0.0368</td><td>ops/ms</td><td>-4.15</td><td>0.55</td><td>3.61</td><td>2.7058</td><td>0.0812</td><td>3.00</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.7.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>2.6631</td><td>0.0310</td><td>ops/ms</td><td>-1.74</td><td>0.00</td><td>2.83</td><td>2.6867</td><td>0.0333</td><td>1.24</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>2.5759</td><td>0.0249</td><td>ops/ms</td><td></td><td>3.28</td><td>2.83</td><td>2.5759</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>2.5687</td><td>0.0254</td><td>ops/ms</td><td></td><td>3.55</td><td>2.83</td><td>2.5687</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.jsonSerialization100kb'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-jsonserialization1mb' hidden><h3>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerialization1mb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class='winner-row'><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.2488</td><td>0.0087</td><td>ops/ms</td><td></td><td>0.00</td><td>4.92</td><td>0.2488</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>5.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2466</td><td>0.0134</td><td>ops/ms</td><td></td><td>0.90</td><td>6.46</td><td>0.2466</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>0.2336</td><td>0.0093</td><td>ops/ms</td><td></td><td>6.09</td><td>5.28</td><td>0.2336</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2429</td><td>0.0091</td><td>ops/ms</td><td>-0.79</td><td>2.37</td><td>5.11</td><td>0.2439</td><td>0.0014</td><td>0.56</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2368</td><td>0.0089</td><td>ops/ms</td><td>-1.72</td><td>4.83</td><td>5.13</td><td>0.2388</td><td>0.0029</td><td>1.22</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>6.7.0</td><td></td><td>0.2361</td><td>0.0071</td><td>ops/ms</td><td>-2.45</td><td>5.11</td><td>4.61</td><td>0.2390</td><td>0.0042</td><td>1.75</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>0.2342</td><td>0.0096</td><td>ops/ms</td><td></td><td>5.86</td><td>5.37</td><td>0.2342</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>0.2341</td><td>0.0099</td><td>ops/ms</td><td></td><td>5.91</td><td>5.49</td><td>0.2341</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.jsonSerialization1mb'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-jsonserializationsmall' hidden><h3>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerializationSmall</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>15.7703</td><td>0.3650</td><td>ops/ms</td><td></td><td>46.58</td><td>8.74</td><td>15.7703</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>15.5541</td><td>0.3369</td><td>ops/ms</td><td></td><td>47.31</td><td>8.70</td><td>15.5541</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>15.9682</td><td>0.1321</td><td>ops/ms</td><td></td><td>45.91</td><td>8.66</td><td>15.9682</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.3596</td><td>0.3644</td><td>ops/ms</td><td>-16.68</td><td>0.55</td><td>15.38</td><td>32.2985</td><td>4.1561</td><td>12.87</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>29.5216</td><td>0.2513</td><td>ops/ms</td><td>-11.25</td><td>0.00</td><td>11.92</td><td>31.3929</td><td>2.6464</td><td>8.43</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.3859</td><td>0.1715</td><td>ops/ms</td><td>-13.32</td><td>0.46</td><td>13.15</td><td>31.6428</td><td>3.1918</td><td>10.09</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>26.5639</td><td>0.1271</td><td>ops/ms</td><td></td><td>10.02</td><td>8.66</td><td>26.5639</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>26.8074</td><td>0.0875</td><td>ops/ms</td><td></td><td>9.19</td><td>8.66</td><td>26.8074</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.jsonSerializationSmall'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-payload100kb' hidden><h3>Payload Size: javalin.performance.JavalinBenchmark.payload100kb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>3.0881</td><td>0.0123</td><td>ops/ms</td><td></td><td>6.47</td><td>5.61</td><td>3.0881</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>3.0798</td><td>0.0219</td><td>ops/ms</td><td></td><td>6.72</td><td>5.61</td><td>3.0798</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>3.0752</td><td>0.0130</td><td>ops/ms</td><td></td><td>6.86</td><td>5.61</td><td>3.0752</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2935</td><td>0.0154</td><td>ops/ms</td><td>-7.47</td><td>0.25</td><td>7.58</td><td>3.4264</td><td>0.1879</td><td>5.48</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>3.3016</td><td>0.0237</td><td>ops/ms</td><td>-7.15</td><td>0.00</td><td>7.41</td><td>3.4287</td><td>0.1797</td><td>5.24</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2980</td><td>0.0132</td><td>ops/ms</td><td>-7.23</td><td>0.11</td><td>7.46</td><td>3.4265</td><td>0.1817</td><td>5.30</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.1895</td><td>0.0270</td><td>ops/ms</td><td></td><td>3.40</td><td>5.61</td><td>3.1895</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2055</td><td>0.0192</td><td>ops/ms</td><td></td><td>2.91</td><td>5.61</td><td>3.2055</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.payload100kb'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-payload1mb' hidden><h3>Payload Size: javalin.performance.JavalinBenchmark.payload1mb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class='cobest-row'><td>5.4.2</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3249</td><td>0.0099</td><td>ops/ms</td><td></td><td>0.16</td><td>4.31</td><td>0.3249</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>5.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.3254</td><td>0.0099</td><td>ops/ms</td><td></td><td>0.00</td><td>4.28</td><td>0.3254</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3150</td><td>0.0121</td><td>ops/ms</td><td></td><td>3.20</td><td>4.89</td><td>0.3150</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3036</td><td>0.0160</td><td>ops/ms</td><td>-11.39</td><td>6.70</td><td>9.06</td><td>0.3231</td><td>0.0276</td><td>8.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2924</td><td>0.0153</td><td>ops/ms</td><td>-14.53</td><td>10.16</td><td>11.49</td><td>0.3172</td><td>0.0351</td><td>11.08</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3126</td><td>0.0137</td><td>ops/ms</td><td>-8.31</td><td>3.94</td><td>6.84</td><td>0.3268</td><td>0.0200</td><td>6.13</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>0.2880</td><td>0.0208</td><td>ops/ms</td><td></td><td>11.49</td><td>7.83</td><td>0.2880</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>0.2976</td><td>0.0109</td><td>ops/ms</td><td></td><td>8.54</td><td>4.76</td><td>0.2976</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.payload1mb'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-payloadempty' hidden><h3>Payload Size: javalin.performance.JavalinBenchmark.payloadEmpty</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>16.9966</td><td>0.3263</td><td>ops/ms</td><td></td><td>46.29</td><td>13.11</td><td>16.9966</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>16.9223</td><td>0.2605</td><td>ops/ms</td><td></td><td>46.53</td><td>13.11</td><td>16.9223</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>16.2966</td><td>0.3613</td><td>ops/ms</td><td></td><td>48.50</td><td>13.14</td><td>16.2966</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>31.6461</td><td>0.2268</td><td>ops/ms</td><td>-16.78</td><td>0.00</td><td>18.32</td><td>34.8366</td><td>4.5120</td><td>12.95</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>31.3756</td><td>0.3707</td><td>ops/ms</td><td>-16.78</td><td>0.85</td><td>18.31</td><td>34.5377</td><td>4.4719</td><td>12.95</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>31.5320</td><td>0.1998</td><td>ops/ms</td><td>-9.72</td><td>0.36</td><td>14.83</td><td>33.2290</td><td>2.4000</td><td>7.22</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.0942</td><td>0.1104</td><td>ops/ms</td><td></td><td>8.06</td><td>13.11</td><td>29.0942</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>28.9283</td><td>0.2452</td><td>ops/ms</td><td></td><td>8.59</td><td>13.11</td><td>28.9283</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.payloadEmpty'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-routes10' hidden><h3>Route Count: javalin.performance.JavalinBenchmark.routes10</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>14.4298</td><td>0.3104</td><td>ops/ms</td><td></td><td>51.92</td><td>12.34</td><td>14.4298</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>13.9697</td><td>0.0724</td><td>ops/ms</td><td></td><td>53.45</td><td>12.31</td><td>13.9697</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>14.2012</td><td>0.3168</td><td>ops/ms</td><td></td><td>52.68</td><td>12.35</td><td>14.2012</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>30.0129</td><td>0.4138</td><td>ops/ms</td><td>-15.82</td><td>0.00</td><td>17.18</td><td>32.8341</td><td>3.9898</td><td>12.15</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.9065</td><td>0.2279</td><td>ops/ms</td><td>-15.32</td><td>0.35</td><td>16.89</td><td>32.6121</td><td>3.8263</td><td>11.73</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.1328</td><td>0.4465</td><td>ops/ms</td><td>-12.80</td><td>2.93</td><td>15.53</td><td>31.2708</td><td>3.0236</td><td>9.67</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>26.6998</td><td>0.4009</td><td>ops/ms</td><td></td><td>11.04</td><td>12.31</td><td>26.6998</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>26.7427</td><td>0.6478</td><td>ops/ms</td><td></td><td>10.90</td><td>12.39</td><td>26.7427</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.routes10'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-routes100' hidden><h3>Route Count: javalin.performance.JavalinBenchmark.routes100</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>13.3384</td><td>0.2530</td><td>ops/ms</td><td></td><td>44.38</td><td>11.12</td><td>13.3384</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>13.3854</td><td>0.2713</td><td>ops/ms</td><td></td><td>44.18</td><td>11.13</td><td>13.3854</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>13.4708</td><td>0.4508</td><td>ops/ms</td><td></td><td>43.82</td><td>11.44</td><td>13.4708</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>23.8584</td><td>0.3911</td><td>ops/ms</td><td>-7.66</td><td>0.51</td><td>12.31</td><td>24.8477</td><td>1.3990</td><td>5.63</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>23.9799</td><td>0.1527</td><td>ops/ms</td><td>-14.36</td><td>0.00</td><td>15.47</td><td>25.9909</td><td>2.8440</td><td>10.94</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>22.0011</td><td>0.1877</td><td>ops/ms</td><td>-7.53</td><td>8.25</td><td>12.26</td><td>22.8974</td><td>1.2676</td><td>5.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>20.3660</td><td>0.6878</td><td>ops/ms</td><td></td><td>15.07</td><td>11.45</td><td>20.3660</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>20.9931</td><td>0.3420</td><td>ops/ms</td><td></td><td>12.46</td><td>11.12</td><td>20.9931</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.routes100'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-routes1000' hidden><h3>Route Count: javalin.performance.JavalinBenchmark.routes1000</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class='winner-row'><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>13.4628</td><td>0.3054</td><td>ops/ms</td><td></td><td>0.00</td><td>3.21</td><td>13.4628</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>12.6844</td><td>0.3028</td><td>ops/ms</td><td></td><td>5.78</td><td>3.29</td><td>12.6844</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>12.9891</td><td>0.4679</td><td>ops/ms</td><td></td><td>3.52</td><td>4.26</td><td>12.9891</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>6.5.0</td><td></td><td>7.6707</td><td>0.0888</td><td>ops/ms</td><td>5.10</td><td>43.02</td><td>4.18</td><td>7.4846</td><td>0.2632</td><td>3.52</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>6.6.0</td><td></td><td>7.6877</td><td>0.0316</td><td>ops/ms</td><td>24.64</td><td>42.90</td><td>15.68</td><td>6.9278</td><td>1.0746</td><td>15.51</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>6.7.0</td><td></td><td>5.8674</td><td>0.2163</td><td>ops/ms</td><td>13.00</td><td>56.42</td><td>8.93</td><td>5.5299</td><td>0.4774</td><td>8.63</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>5.7412</td><td>0.5094</td><td>ops/ms</td><td></td><td>57.36</td><td>9.16</td><td>5.7412</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>5.7069</td><td>0.3274</td><td>ops/ms</td><td></td><td>57.61</td><td>6.17</td><td>5.7069</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.routes1000'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-staticfile100kb' hidden><h3>Static File: javalin.performance.JavalinBenchmark.staticFile100kb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class=''><td>5.4.2</td><td></td><td>3.1156</td><td>0.0293</td><td>ops/ms</td><td></td><td>6.39</td><td>5.89</td><td>3.1156</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.5.0</td><td></td><td>3.1283</td><td>0.0117</td><td>ops/ms</td><td></td><td>6.01</td><td>5.89</td><td>3.1283</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>5.6.5</td><td></td><td>3.1278</td><td>0.0265</td><td>ops/ms</td><td></td><td>6.03</td><td>5.89</td><td>3.1278</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.3267</td><td>0.0198</td><td>ops/ms</td><td>-7.20</td><td>0.05</td><td>7.66</td><td>3.4559</td><td>0.1826</td><td>5.28</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>3.3284</td><td>0.0180</td><td>ops/ms</td><td>-7.54</td><td>0.00</td><td>7.84</td><td>3.4641</td><td>0.1920</td><td>5.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.3187</td><td>0.0221</td><td>ops/ms</td><td>-7.47</td><td>0.29</td><td>7.80</td><td>3.4527</td><td>0.1894</td><td>5.49</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2245</td><td>0.0255</td><td>ops/ms</td><td></td><td>3.12</td><td>5.89</td><td>3.2245</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2211</td><td>0.0184</td><td>ops/ms</td><td></td><td>3.22</td><td>5.89</td><td>3.2211</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.staticFile100kb'></div></section></div></section><section class='tab-panel' data-tab-panel='benchmark-tab-javalin-performance-javalinbenchmark-staticfile1mb' hidden><h3>Static File: javalin.performance.JavalinBenchmark.staticFile1mb</h3><div class='summary-wrap'><table><thead><tr><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class='winner-row'><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.3472</td><td>0.0075</td><td>ops/ms</td><td></td><td>0.00</td><td>3.07</td><td>0.3472</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>5.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3454</td><td>0.0108</td><td>ops/ms</td><td></td><td>0.53</td><td>3.81</td><td>0.3454</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3448</td><td>0.0105</td><td>ops/ms</td><td></td><td>0.70</td><td>3.74</td><td>0.3448</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3340</td><td>0.0080</td><td>ops/ms</td><td>-6.75</td><td>3.80</td><td>5.39</td><td>0.3461</td><td>0.0171</td><td>4.94</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3363</td><td>0.0090</td><td>ops/ms</td><td>-4.64</td><td>3.14</td><td>4.00</td><td>0.3445</td><td>0.0116</td><td>3.36</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3328</td><td>0.0100</td><td>ops/ms</td><td>-7.00</td><td>4.13</td><td>5.57</td><td>0.3454</td><td>0.0177</td><td>5.13</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.0</td><td></td><td>0.3252</td><td>0.0148</td><td>ops/ms</td><td></td><td>6.34</td><td>5.06</td><td>0.3252</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>7.0.1-SNAPSHOT</td><td></td><td>0.3297</td><td>0.0089</td><td>ops/ms</td><td></td><td>5.05</td><td>3.46</td><td>0.3297</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div><div class='panel-chart'><section class='chart-card'><div class='chart-host' data-chart-key='javalin.performance.JavalinBenchmark.staticFile1mb'></div></section></div></section></div></section>
+
+      <h2>All Benchmarks Overview</h2>
+      <p class="overview-note">This is the same latest table data as the tabs above, collected into one table for quick scanning.</p>
+      <div class='summary-wrap overview-wrap'><table><thead><tr><th>Benchmark</th><th>Version</th><th>Winner</th><th>Latest Score</th><th>Score Error</th><th>Unit</th><th>Delta vs Prev %</th><th>Delta vs Best %</th><th>Best Band %</th><th>Mean (last 8)</th><th>Stdev (last 8)</th><th>CV% (last 8)</th><th>Samples</th><th>Threads</th><th>Forks</th><th>Meas. Iter.</th><th>Meas. Time</th></tr></thead><tbody><tr class='overview-divider'><td colspan='17'>Hello / Lifecycle: javalin.performance.JavalinBenchmark.hello</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.hello</td><td>5.4.2</td><td></td><td>5.5275</td><td>0.0198</td><td>ops/ms</td><td></td><td>44.51</td><td>13.18</td><td>5.5275</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.hello</td><td>5.5.0</td><td></td><td>5.2895</td><td>0.1320</td><td>ops/ms</td><td></td><td>46.90</td><td>13.27</td><td>5.2895</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.hello</td><td>5.6.5</td><td></td><td>5.5517</td><td>0.0712</td><td>ops/ms</td><td></td><td>44.26</td><td>13.18</td><td>5.5517</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.hello</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.7723</td><td>0.1631</td><td>ops/ms</td><td>-17.62</td><td>1.89</td><td>18.88</td><td>10.8172</td><td>1.4777</td><td>13.66</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.hello</td><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>9.9608</td><td>0.0501</td><td>ops/ms</td><td>-16.87</td><td>0.00</td><td>18.43</td><td>10.9717</td><td>1.4297</td><td>13.03</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.hello</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.7883</td><td>0.0841</td><td>ops/ms</td><td>-13.51</td><td>1.73</td><td>16.58</td><td>10.5530</td><td>1.0814</td><td>10.25</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.hello</td><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>9.0372</td><td>0.0528</td><td>ops/ms</td><td></td><td>9.27</td><td>13.18</td><td>9.0372</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.hello</td><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>8.9883</td><td>0.0664</td><td>ops/ms</td><td></td><td>9.76</td><td>13.18</td><td>8.9883</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerialization100kb</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>5.4.2</td><td></td><td>2.5721</td><td>0.0208</td><td>ops/ms</td><td></td><td>3.42</td><td>2.83</td><td>2.5721</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>5.5.0</td><td></td><td>2.5665</td><td>0.0176</td><td>ops/ms</td><td></td><td>3.63</td><td>2.83</td><td>2.5665</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>5.6.5</td><td></td><td>2.5483</td><td>0.0186</td><td>ops/ms</td><td></td><td>4.31</td><td>2.83</td><td>2.5483</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>2.6579</td><td>0.0382</td><td>ops/ms</td><td>0.95</td><td>0.20</td><td>2.83</td><td>2.6454</td><td>0.0176</td><td>0.67</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>2.6484</td><td>0.0368</td><td>ops/ms</td><td>-4.15</td><td>0.55</td><td>3.61</td><td>2.7058</td><td>0.0812</td><td>3.00</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>6.7.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>2.6631</td><td>0.0310</td><td>ops/ms</td><td>-1.74</td><td>0.00</td><td>2.83</td><td>2.6867</td><td>0.0333</td><td>1.24</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>7.0.0</td><td></td><td>2.5759</td><td>0.0249</td><td>ops/ms</td><td></td><td>3.28</td><td>2.83</td><td>2.5759</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization100kb</td><td>7.0.1-SNAPSHOT</td><td></td><td>2.5687</td><td>0.0254</td><td>ops/ms</td><td></td><td>3.55</td><td>2.83</td><td>2.5687</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerialization1mb</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.2488</td><td>0.0087</td><td>ops/ms</td><td></td><td>0.00</td><td>4.92</td><td>0.2488</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>5.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2466</td><td>0.0134</td><td>ops/ms</td><td></td><td>0.90</td><td>6.46</td><td>0.2466</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>5.6.5</td><td></td><td>0.2336</td><td>0.0093</td><td>ops/ms</td><td></td><td>6.09</td><td>5.28</td><td>0.2336</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2429</td><td>0.0091</td><td>ops/ms</td><td>-0.79</td><td>2.37</td><td>5.11</td><td>0.2439</td><td>0.0014</td><td>0.56</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2368</td><td>0.0089</td><td>ops/ms</td><td>-1.72</td><td>4.83</td><td>5.13</td><td>0.2388</td><td>0.0029</td><td>1.22</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>6.7.0</td><td></td><td>0.2361</td><td>0.0071</td><td>ops/ms</td><td>-2.45</td><td>5.11</td><td>4.61</td><td>0.2390</td><td>0.0042</td><td>1.75</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>7.0.0</td><td></td><td>0.2342</td><td>0.0096</td><td>ops/ms</td><td></td><td>5.86</td><td>5.37</td><td>0.2342</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerialization1mb</td><td>7.0.1-SNAPSHOT</td><td></td><td>0.2341</td><td>0.0099</td><td>ops/ms</td><td></td><td>5.91</td><td>5.49</td><td>0.2341</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>JSON Serialization: javalin.performance.JavalinBenchmark.jsonSerializationSmall</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>5.4.2</td><td></td><td>15.7703</td><td>0.3650</td><td>ops/ms</td><td></td><td>46.58</td><td>8.74</td><td>15.7703</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>5.5.0</td><td></td><td>15.5541</td><td>0.3369</td><td>ops/ms</td><td></td><td>47.31</td><td>8.70</td><td>15.5541</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>5.6.5</td><td></td><td>15.9682</td><td>0.1321</td><td>ops/ms</td><td></td><td>45.91</td><td>8.66</td><td>15.9682</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.3596</td><td>0.3644</td><td>ops/ms</td><td>-16.68</td><td>0.55</td><td>15.38</td><td>32.2985</td><td>4.1561</td><td>12.87</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>29.5216</td><td>0.2513</td><td>ops/ms</td><td>-11.25</td><td>0.00</td><td>11.92</td><td>31.3929</td><td>2.6464</td><td>8.43</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.3859</td><td>0.1715</td><td>ops/ms</td><td>-13.32</td><td>0.46</td><td>13.15</td><td>31.6428</td><td>3.1918</td><td>10.09</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>7.0.0</td><td></td><td>26.5639</td><td>0.1271</td><td>ops/ms</td><td></td><td>10.02</td><td>8.66</td><td>26.5639</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.jsonSerializationSmall</td><td>7.0.1-SNAPSHOT</td><td></td><td>26.8074</td><td>0.0875</td><td>ops/ms</td><td></td><td>9.19</td><td>8.66</td><td>26.8074</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Payload Size: javalin.performance.JavalinBenchmark.payload100kb</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>5.4.2</td><td></td><td>3.0881</td><td>0.0123</td><td>ops/ms</td><td></td><td>6.47</td><td>5.61</td><td>3.0881</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>5.5.0</td><td></td><td>3.0798</td><td>0.0219</td><td>ops/ms</td><td></td><td>6.72</td><td>5.61</td><td>3.0798</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>5.6.5</td><td></td><td>3.0752</td><td>0.0130</td><td>ops/ms</td><td></td><td>6.86</td><td>5.61</td><td>3.0752</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2935</td><td>0.0154</td><td>ops/ms</td><td>-7.47</td><td>0.25</td><td>7.58</td><td>3.4264</td><td>0.1879</td><td>5.48</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>3.3016</td><td>0.0237</td><td>ops/ms</td><td>-7.15</td><td>0.00</td><td>7.41</td><td>3.4287</td><td>0.1797</td><td>5.24</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2980</td><td>0.0132</td><td>ops/ms</td><td>-7.23</td><td>0.11</td><td>7.46</td><td>3.4265</td><td>0.1817</td><td>5.30</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.1895</td><td>0.0270</td><td>ops/ms</td><td></td><td>3.40</td><td>5.61</td><td>3.1895</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload100kb</td><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2055</td><td>0.0192</td><td>ops/ms</td><td></td><td>2.91</td><td>5.61</td><td>3.2055</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Payload Size: javalin.performance.JavalinBenchmark.payload1mb</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>5.4.2</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3249</td><td>0.0099</td><td>ops/ms</td><td></td><td>0.16</td><td>4.31</td><td>0.3249</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>5.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.3254</td><td>0.0099</td><td>ops/ms</td><td></td><td>0.00</td><td>4.28</td><td>0.3254</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3150</td><td>0.0121</td><td>ops/ms</td><td></td><td>3.20</td><td>4.89</td><td>0.3150</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3036</td><td>0.0160</td><td>ops/ms</td><td>-11.39</td><td>6.70</td><td>9.06</td><td>0.3231</td><td>0.0276</td><td>8.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.2924</td><td>0.0153</td><td>ops/ms</td><td>-14.53</td><td>10.16</td><td>11.49</td><td>0.3172</td><td>0.0351</td><td>11.08</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3126</td><td>0.0137</td><td>ops/ms</td><td>-8.31</td><td>3.94</td><td>6.84</td><td>0.3268</td><td>0.0200</td><td>6.13</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>7.0.0</td><td></td><td>0.2880</td><td>0.0208</td><td>ops/ms</td><td></td><td>11.49</td><td>7.83</td><td>0.2880</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payload1mb</td><td>7.0.1-SNAPSHOT</td><td></td><td>0.2976</td><td>0.0109</td><td>ops/ms</td><td></td><td>8.54</td><td>4.76</td><td>0.2976</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Payload Size: javalin.performance.JavalinBenchmark.payloadEmpty</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>5.4.2</td><td></td><td>16.9966</td><td>0.3263</td><td>ops/ms</td><td></td><td>46.29</td><td>13.11</td><td>16.9966</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>5.5.0</td><td></td><td>16.9223</td><td>0.2605</td><td>ops/ms</td><td></td><td>46.53</td><td>13.11</td><td>16.9223</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>5.6.5</td><td></td><td>16.2966</td><td>0.3613</td><td>ops/ms</td><td></td><td>48.50</td><td>13.14</td><td>16.2966</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>6.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>31.6461</td><td>0.2268</td><td>ops/ms</td><td>-16.78</td><td>0.00</td><td>18.32</td><td>34.8366</td><td>4.5120</td><td>12.95</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>31.3756</td><td>0.3707</td><td>ops/ms</td><td>-16.78</td><td>0.85</td><td>18.31</td><td>34.5377</td><td>4.4719</td><td>12.95</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>31.5320</td><td>0.1998</td><td>ops/ms</td><td>-9.72</td><td>0.36</td><td>14.83</td><td>33.2290</td><td>2.4000</td><td>7.22</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.0942</td><td>0.1104</td><td>ops/ms</td><td></td><td>8.06</td><td>13.11</td><td>29.0942</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.payloadEmpty</td><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>28.9283</td><td>0.2452</td><td>ops/ms</td><td></td><td>8.59</td><td>13.11</td><td>28.9283</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Route Count: javalin.performance.JavalinBenchmark.routes10</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes10</td><td>5.4.2</td><td></td><td>14.4298</td><td>0.3104</td><td>ops/ms</td><td></td><td>51.92</td><td>12.34</td><td>14.4298</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes10</td><td>5.5.0</td><td></td><td>13.9697</td><td>0.0724</td><td>ops/ms</td><td></td><td>53.45</td><td>12.31</td><td>13.9697</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes10</td><td>5.6.5</td><td></td><td>14.2012</td><td>0.3168</td><td>ops/ms</td><td></td><td>52.68</td><td>12.35</td><td>14.2012</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.routes10</td><td>6.5.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>30.0129</td><td>0.4138</td><td>ops/ms</td><td>-15.82</td><td>0.00</td><td>17.18</td><td>32.8341</td><td>3.9898</td><td>12.15</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes10</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.9065</td><td>0.2279</td><td>ops/ms</td><td>-15.32</td><td>0.35</td><td>16.89</td><td>32.6121</td><td>3.8263</td><td>11.73</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes10</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>29.1328</td><td>0.4465</td><td>ops/ms</td><td>-12.80</td><td>2.93</td><td>15.53</td><td>31.2708</td><td>3.0236</td><td>9.67</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes10</td><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>26.6998</td><td>0.4009</td><td>ops/ms</td><td></td><td>11.04</td><td>12.31</td><td>26.6998</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes10</td><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>26.7427</td><td>0.6478</td><td>ops/ms</td><td></td><td>10.90</td><td>12.39</td><td>26.7427</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Route Count: javalin.performance.JavalinBenchmark.routes100</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes100</td><td>5.4.2</td><td></td><td>13.3384</td><td>0.2530</td><td>ops/ms</td><td></td><td>44.38</td><td>11.12</td><td>13.3384</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes100</td><td>5.5.0</td><td></td><td>13.3854</td><td>0.2713</td><td>ops/ms</td><td></td><td>44.18</td><td>11.13</td><td>13.3854</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes100</td><td>5.6.5</td><td></td><td>13.4708</td><td>0.4508</td><td>ops/ms</td><td></td><td>43.82</td><td>11.44</td><td>13.4708</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes100</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>23.8584</td><td>0.3911</td><td>ops/ms</td><td>-7.66</td><td>0.51</td><td>12.31</td><td>24.8477</td><td>1.3990</td><td>5.63</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.routes100</td><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>23.9799</td><td>0.1527</td><td>ops/ms</td><td>-14.36</td><td>0.00</td><td>15.47</td><td>25.9909</td><td>2.8440</td><td>10.94</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes100</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>22.0011</td><td>0.1877</td><td>ops/ms</td><td>-7.53</td><td>8.25</td><td>12.26</td><td>22.8974</td><td>1.2676</td><td>5.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes100</td><td>7.0.0</td><td></td><td>20.3660</td><td>0.6878</td><td>ops/ms</td><td></td><td>15.07</td><td>11.45</td><td>20.3660</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes100</td><td>7.0.1-SNAPSHOT</td><td></td><td>20.9931</td><td>0.3420</td><td>ops/ms</td><td></td><td>12.46</td><td>11.12</td><td>20.9931</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Route Count: javalin.performance.JavalinBenchmark.routes1000</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.routes1000</td><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>13.4628</td><td>0.3054</td><td>ops/ms</td><td></td><td>0.00</td><td>3.21</td><td>13.4628</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>5.5.0</td><td></td><td>12.6844</td><td>0.3028</td><td>ops/ms</td><td></td><td>5.78</td><td>3.29</td><td>12.6844</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.routes1000</td><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>12.9891</td><td>0.4679</td><td>ops/ms</td><td></td><td>3.52</td><td>4.26</td><td>12.9891</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>6.5.0</td><td></td><td>7.6707</td><td>0.0888</td><td>ops/ms</td><td>5.10</td><td>43.02</td><td>4.18</td><td>7.4846</td><td>0.2632</td><td>3.52</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>6.6.0</td><td></td><td>7.6877</td><td>0.0316</td><td>ops/ms</td><td>24.64</td><td>42.90</td><td>15.68</td><td>6.9278</td><td>1.0746</td><td>15.51</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>6.7.0</td><td></td><td>5.8674</td><td>0.2163</td><td>ops/ms</td><td>13.00</td><td>56.42</td><td>8.93</td><td>5.5299</td><td>0.4774</td><td>8.63</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>7.0.0</td><td></td><td>5.7412</td><td>0.5094</td><td>ops/ms</td><td></td><td>57.36</td><td>9.16</td><td>5.7412</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.routes1000</td><td>7.0.1-SNAPSHOT</td><td></td><td>5.7069</td><td>0.3274</td><td>ops/ms</td><td></td><td>57.61</td><td>6.17</td><td>5.7069</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Static File: javalin.performance.JavalinBenchmark.staticFile100kb</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>5.4.2</td><td></td><td>3.1156</td><td>0.0293</td><td>ops/ms</td><td></td><td>6.39</td><td>5.89</td><td>3.1156</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>5.5.0</td><td></td><td>3.1283</td><td>0.0117</td><td>ops/ms</td><td></td><td>6.01</td><td>5.89</td><td>3.1283</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>5.6.5</td><td></td><td>3.1278</td><td>0.0265</td><td>ops/ms</td><td></td><td>6.03</td><td>5.89</td><td>3.1278</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.3267</td><td>0.0198</td><td>ops/ms</td><td>-7.20</td><td>0.05</td><td>7.66</td><td>3.4559</td><td>0.1826</td><td>5.28</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>6.6.0</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>3.3284</td><td>0.0180</td><td>ops/ms</td><td>-7.54</td><td>0.00</td><td>7.84</td><td>3.4641</td><td>0.1920</td><td>5.54</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.3187</td><td>0.0221</td><td>ops/ms</td><td>-7.47</td><td>0.29</td><td>7.80</td><td>3.4527</td><td>0.1894</td><td>5.49</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>7.0.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2245</td><td>0.0255</td><td>ops/ms</td><td></td><td>3.12</td><td>5.89</td><td>3.2245</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile100kb</td><td>7.0.1-SNAPSHOT</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>3.2211</td><td>0.0184</td><td>ops/ms</td><td></td><td>3.22</td><td>5.89</td><td>3.2211</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='overview-divider'><td colspan='17'>Static File: javalin.performance.JavalinBenchmark.staticFile1mb</td></tr>
+<tr class='winner-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>5.4.2</td><td><span class='winner-badge' title='Highest latest score'>&#9733; Best</span></td><td>0.3472</td><td>0.0075</td><td>ops/ms</td><td></td><td>0.00</td><td>3.07</td><td>0.3472</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>5.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3454</td><td>0.0108</td><td>ops/ms</td><td></td><td>0.53</td><td>3.81</td><td>0.3454</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>5.6.5</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3448</td><td>0.0105</td><td>ops/ms</td><td></td><td>0.70</td><td>3.74</td><td>0.3448</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>6.5.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3340</td><td>0.0080</td><td>ops/ms</td><td>-6.75</td><td>3.80</td><td>5.39</td><td>0.3461</td><td>0.0171</td><td>4.94</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>6.6.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3363</td><td>0.0090</td><td>ops/ms</td><td>-4.64</td><td>3.14</td><td>4.00</td><td>0.3445</td><td>0.0116</td><td>3.36</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class='cobest-row'><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>6.7.0</td><td><span class='cobest-badge' title='Within CV/error uncertainty band of the best score'>Near best</span></td><td>0.3328</td><td>0.0100</td><td>ops/ms</td><td>-7.00</td><td>4.13</td><td>5.57</td><td>0.3454</td><td>0.0177</td><td>5.13</td><td>2</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>7.0.0</td><td></td><td>0.3252</td><td>0.0148</td><td>ops/ms</td><td></td><td>6.34</td><td>5.06</td><td>0.3252</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr>
+<tr class=''><td>javalin.performance.JavalinBenchmark.staticFile1mb</td><td>7.0.1-SNAPSHOT</td><td></td><td>0.3297</td><td>0.0089</td><td>ops/ms</td><td></td><td>5.05</td><td>3.46</td><td>0.3297</td><td></td><td></td><td>1</td><td>4</td><td>2</td><td>10</td><td>1000 ms</td></tr></tbody></table></div>
+
+      <footer>Higher score is better in throughput mode. Use Delta vs Best % plus Best Band % to spot statistically close results that can be treated as tied.</footer>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <script>
+    (() => {
+      const chartData = {"javalin.performance.JavalinBenchmark.hello": {"benchmark": "javalin.performance.JavalinBenchmark.hello", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [5.527481940169203, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [5.289456211385165, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [5.551686061549818, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [11.86215412674939, 9.772341144940041], "color": "#ef8354"}, {"name": "6.6.0", "data": [11.982693655750383, 9.96078122909091], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [11.31766231033053, 9.788301380935442], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 9.03718663146735], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 8.988297915462237], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.jsonSerialization100kb": {"benchmark": "javalin.performance.JavalinBenchmark.jsonSerialization100kb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [2.5720820675216487, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [2.566516324113347, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [2.5483118325498753, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [2.632963626270443, 2.657899247840698], "color": "#ef8354"}, {"name": "6.6.0", "data": [2.763190301644192, 2.648388156765055], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [2.7102293978103194, 2.663126830579075], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 2.5758933568087086], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 2.5687102476946158], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.jsonSerialization1mb": {"benchmark": "javalin.performance.JavalinBenchmark.jsonSerialization1mb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [0.24879210887415798, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [0.24655572985691268, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [0.23364389016321985, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [0.24484627805120165, 0.24290199747276425], "color": "#ef8354"}, {"name": "6.6.0", "data": [0.2409020327176042, 0.23676982277378028], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [0.24199242388983336, 0.23607475073824888], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 0.23420738828179166], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 0.23409864447313114], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.jsonSerializationSmall": {"benchmark": "javalin.performance.JavalinBenchmark.jsonSerializationSmall", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [15.770344286036902, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [15.554121515860155, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [15.96823974513724, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [35.23728789735164, 29.359629798077265], "color": "#ef8354"}, {"name": "6.6.0", "data": [33.264243879945056, 29.521622773473943], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [33.8997213783695, 29.385863346000896], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 26.56394232128102], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 26.80735137342025], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.payload100kb": {"benchmark": "javalin.performance.JavalinBenchmark.payload100kb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [3.0881479589268133, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [3.0797619997471553, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [3.0752016393965116, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [3.5592075657006497, 3.293509515229778], "color": "#ef8354"}, {"name": "6.6.0", "data": [3.555727362839744, 3.3016399480158376], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [3.5550072471250536, 3.298039499434055], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 3.189509932237354], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 3.205452397519747], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.payload1mb": {"benchmark": "javalin.performance.JavalinBenchmark.payload1mb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [0.32489153252842484, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [0.3254145677530403, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [0.3150000985548055, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [0.34264137380985554, 0.3036222323946306], "color": "#ef8354"}, {"name": "6.6.0", "data": [0.3420707487119582, 0.29236479108301855], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [0.3409240078423254, 0.31259516617776695], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 0.288023958037646], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 0.297618562460125], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.payloadEmpty": {"benchmark": "javalin.performance.JavalinBenchmark.payloadEmpty", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [16.996566435731214, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [16.92234018651726, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [16.296592821149382, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [38.02705647929055, 31.646144406118168], "color": "#ef8354"}, {"name": "6.6.0", "data": [37.69978252519746, 31.37559818885856], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [34.92606674832074, 31.531954196322623], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 29.094175875615157], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 28.928251159254575], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.routes10": {"benchmark": "javalin.performance.JavalinBenchmark.routes10", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [14.429820172413946, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [13.96969643634137, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [14.20115688884194, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [35.655361837793016, 30.012929357062074], "color": "#ef8354"}, {"name": "6.6.0", "data": [35.317747613445086, 29.906497102461366], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [33.408757403865664, 29.132751613592042], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 26.699768124885242], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 26.742733195140026], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.routes100": {"benchmark": "javalin.performance.JavalinBenchmark.routes100", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [13.338433868999559, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [13.38537130072653, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [13.470838976225073, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [25.836917157963068, 23.85844204235052], "color": "#ef8354"}, {"name": "6.6.0", "data": [28.001921080429337, 23.979943404898453], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [23.793713090364882, 22.001067243308725], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 20.366003853593543], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 20.993134623384854], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.routes1000": {"benchmark": "javalin.performance.JavalinBenchmark.routes1000", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [13.462772360439129, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [12.68439229148122, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [12.989139394853998, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [7.298483255493717, 7.6706776647586095], "color": "#ef8354"}, {"name": "6.6.0", "data": [6.1679741930943885, 7.687665336223299], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [5.192338206206328, 5.8674369657171255], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 5.7411835596013825], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 5.706864185790858], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.staticFile100kb": {"benchmark": "javalin.performance.JavalinBenchmark.staticFile100kb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [3.1156151951467446, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [3.1282551145753104, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [3.1278024602761905, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [3.5850105264255, 3.3267226301138684], "color": "#ef8354"}, {"name": "6.6.0", "data": [3.5998709733786427, 3.3283573405755726], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [3.586585353769609, 3.3187338385645724], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 3.2245005394910278], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 3.221128975264558], "color": "#c23b4f"}]}, "javalin.performance.JavalinBenchmark.staticFile1mb": {"benchmark": "javalin.performance.JavalinBenchmark.staticFile1mb", "scoreUnit": "ops/ms", "runs": [{"runId": "20260222T010326Z-22267727929-1", "label": "02-22 01:03", "fullLabel": "2026-02-22 01:03:26 UTC"}, {"runId": "20260222T140011Z-22278559449-1", "label": "02-22 14:00", "fullLabel": "2026-02-22 14:00:11 UTC"}], "series": [{"name": "5.4.2", "data": [0.34720022244523935, null], "color": "#0f8b8d"}, {"name": "5.5.0", "data": [0.34536273721778105, null], "color": "#c23b4f"}, {"name": "5.6.5", "data": [0.34476530812252043, null], "color": "#2a63d4"}, {"name": "6.5.0", "data": [0.35816689562872683, 0.33400669556266205], "color": "#ef8354"}, {"name": "6.6.0", "data": [0.3526479901116614, 0.3362840752557165], "color": "#1f7a8c"}, {"name": "6.7.0", "data": [0.3579121346715315, 0.3328437800690956], "color": "#4f5d75"}, {"name": "7.0.0", "data": [null, 0.32517462174722], "color": "#0f8b8d"}, {"name": "7.0.1-SNAPSHOT", "data": [null, 0.32966351681019423], "color": "#c23b4f"}]}};
+      const buttons = Array.from(document.querySelectorAll('[data-tab-button]'));
+      const panels = Array.from(document.querySelectorAll('[data-tab-panel]'));
+      if (!buttons.length || !panels.length) {
+        return;
+      }
+
+      const chartInstances = new Map();
+
+      const buildOption = (spec) => {
+        const labels = spec.runs.map((run) => run.label);
+        const fullLabels = spec.runs.map((run) => run.fullLabel);
+        return {
+          animation: false,
+          color: spec.series.map((line) => line.color),
+          grid: { left: 52, right: 20, top: 44, bottom: 44, containLabel: true },
+          legend: { top: 0, left: 0, type: 'scroll' },
+          tooltip: {
+            trigger: 'axis',
+            confine: true,
+            axisPointer: { type: 'cross' },
+            formatter: (params) => {
+              if (!params || !params.length) {
+                return '';
+              }
+              const dataIndex = params[0].dataIndex;
+              const lines = [fullLabels[dataIndex] || labels[dataIndex] || ''];
+              params.forEach((item) => {
+                if (item.value === null || item.value === undefined || item.value === '-') {
+                  return;
+                }
+                const numeric = Number(item.value);
+                const valueText = Number.isFinite(numeric) ? numeric.toFixed(4) : String(item.value);
+                lines.push(`${item.seriesName}: ${valueText} ${spec.scoreUnit}`);
+              });
+              return lines.join('<br/>');
+            },
+          },
+          xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: labels,
+            axisLabel: { hideOverlap: true },
+            axisTick: { alignWithLabel: true },
+          },
+          yAxis: {
+            type: 'value',
+            name: spec.scoreUnit,
+            splitLine: { lineStyle: { color: '#dce9f6' } },
+          },
+          series: spec.series.map((line) => ({
+            name: line.name,
+            type: 'line',
+            data: line.data,
+            showSymbol: true,
+            symbolSize: 6,
+            connectNulls: false,
+            smooth: false,
+            lineStyle: { width: 2 },
+            itemStyle: { color: line.color },
+            emphasis: { focus: 'series' },
+          })),
+        };
+      };
+
+      const renderPanelChart = (panel) => {
+        const host = panel.querySelector('.chart-host');
+        if (!host) {
+          return;
+        }
+        const key = host.dataset.chartKey;
+        const spec = chartData[key];
+        if (!spec) {
+          host.textContent = 'No trend data yet.';
+          return;
+        }
+        if (typeof echarts === 'undefined') {
+          host.textContent = 'Chart library failed to load.';
+          return;
+        }
+
+        let chart = chartInstances.get(key);
+        if (!chart) {
+          chart = echarts.init(host);
+          chartInstances.set(key, chart);
+        }
+
+        chart.setOption(buildOption(spec), true);
+        chart.resize();
+      };
+
+      const setActive = (tabId) => {
+        buttons.forEach((button) => {
+          const active = button.dataset.tabButton === tabId;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+
+        panels.forEach((panel) => {
+          const active = panel.dataset.tabPanel === tabId;
+          panel.classList.toggle('active', active);
+          panel.hidden = !active;
+        });
+
+        const activePanel = panels.find((panel) => panel.dataset.tabPanel === tabId);
+        if (activePanel) {
+          renderPanelChart(activePanel);
+        }
+      };
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => setActive(button.dataset.tabButton));
+      });
+
+      const initiallyActive = buttons.find((button) => button.classList.contains('active')) || buttons[0];
+      if (initiallyActive) {
+        setActive(initiallyActive.dataset.tabButton);
+      }
+
+      window.addEventListener('resize', () => {
+        chartInstances.forEach((chart) => chart.resize());
+      });
+    })();
+  </script>
+</body>
+</html>
