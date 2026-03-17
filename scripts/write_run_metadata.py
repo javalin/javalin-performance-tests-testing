@@ -20,6 +20,14 @@ def main():
     parser.add_argument("--run-attempt", default="")
     parser.add_argument("--git-sha", default="")
     parser.add_argument("--git-ref", default="")
+    parser.add_argument("--source-repository", default="")
+    parser.add_argument("--source-sha", default="")
+    parser.add_argument("--source-ref", default="")
+    parser.add_argument("--source-pr-number", default="")
+    parser.add_argument("--source-tarball-url", default="")
+    parser.add_argument("--trigger-repository", default="")
+    parser.add_argument("--trigger-pr-number", default="")
+    parser.add_argument("--trigger-pr-url", default="")
     args = parser.parse_args()
 
     payload = {
@@ -40,6 +48,24 @@ def main():
             "resultFormat": "json",
         },
     }
+
+    source_snapshot = {
+        "repository": args.source_repository,
+        "sha": args.source_sha,
+        "ref": args.source_ref,
+        "pullRequestNumber": args.source_pr_number,
+        "tarballUrl": args.source_tarball_url,
+    }
+    if any(value for value in source_snapshot.values()):
+        payload["sourceSnapshot"] = source_snapshot
+
+    trigger_context = {
+        "repository": args.trigger_repository,
+        "pullRequestNumber": args.trigger_pr_number,
+        "pullRequestUrl": args.trigger_pr_url,
+    }
+    if any(value for value in trigger_context.values()):
+        payload["triggerContext"] = trigger_context
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

@@ -188,6 +188,13 @@ Workflow: `.github/workflows/benchmark-pr.yml`
 Triggers:
 - On every pull request.
 - Manual `workflow_dispatch` with optional versions and tuning overrides.
+- Manual `workflow_dispatch` can also benchmark an immutable source snapshot by passing:
+  - `sourceTarballUrl` (required for snapshot mode),
+  - optional `sourceRepository`, `sourceSha`, `sourceRef`, `sourcePrNumber` for metadata.
+
+Snapshot mode behavior:
+- Downloads the tarball snapshot and installs Javalin to Maven local from that source.
+- Detects `project.version` from the snapshot and adds it to the benchmark versions for the run.
 
 Defaults:
 - versions from `config/pr-versions.txt`,
