@@ -96,7 +96,7 @@ jobs:
       GITHUB_SHA: ${{ github.sha }}
       GITHUB_REF_NAME: ${{ github.ref_name }}
       GITHUB_TOKEN: ${{ github.token }}
-      PERFORMANCE_TESTS_TRIGGER_TOKEN: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+      JAVALIN_PR_RW: ${{ secrets.JAVALIN_PR_RW }}
       BENCHMARK_DATA_BRANCH: ${{ vars.BENCHMARK_DATA_BRANCH || 'benchmark-data' }}
       PR_PREVIEW_BASE_URL: ${{ vars.PR_PREVIEW_PAGES_BASE_URL || 'https://javalin.github.io/javalin-performance-tests-testing/pr-previews' }}
     steps:
@@ -332,7 +332,7 @@ jobs:
         if: success() && env.INPUT_TRIGGER_PR_NUMBER != ''
         uses: actions/github-script@v8
         with:
-          github-token: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+          github-token: ${{ secrets.JAVALIN_PR_RW }}
           script: |
             const [owner, repo] = process.env.INPUT_TRIGGER_REPOSITORY.split("/");
             const prNumber = parseInt(process.env.INPUT_TRIGGER_PR_NUMBER, 10);
@@ -353,7 +353,7 @@ jobs:
         if: failure() && env.INPUT_TRIGGER_PR_NUMBER != ''
         uses: actions/github-script@v8
         with:
-          github-token: ${{ secrets.PERFORMANCE_TESTS_TRIGGER_TOKEN }}
+          github-token: ${{ secrets.JAVALIN_PR_RW }}
           script: |
             const [owner, repo] = process.env.INPUT_TRIGGER_REPOSITORY.split("/");
             const prNumber = parseInt(process.env.INPUT_TRIGGER_PR_NUMBER, 10);
