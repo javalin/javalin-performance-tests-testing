@@ -1,0 +1,1044 @@
+[
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.hello",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 9.477549994378975,
+            "scoreError" : 0.06732376137336599,
+            "scoreConfidence" : [
+                9.41022623300561,
+                9.544873755752342
+            ],
+            "scorePercentiles" : {
+                "0.0" : 9.3358501020224,
+                "50.0" : 9.483352776984638,
+                "90.0" : 9.57193247434337,
+                "95.0" : 9.605622334000625,
+                "99.0" : 9.60730668466067,
+                "99.9" : 9.60730668466067,
+                "99.99" : 9.60730668466067,
+                "99.999" : 9.60730668466067,
+                "99.9999" : 9.60730668466067,
+                "100.0" : 9.60730668466067
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    9.37854147182354,
+                    9.554184318862408,
+                    9.57361967145974,
+                    9.473465683362136,
+                    9.49898965625725,
+                    9.44282847180304,
+                    9.452447532359722,
+                    9.46621070689671,
+                    9.424560195162567,
+                    9.433605625394586
+                ],
+                [
+                    9.3358501020224,
+                    9.366018769683057,
+                    9.543147671641984,
+                    9.363000434888129,
+                    9.55674770029604,
+                    9.552692492217215,
+                    9.513877972154607,
+                    9.49323987060714,
+                    9.52066485602656,
+                    9.60730668466067
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.jsonSerialization100kb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 2.4890340874446837,
+            "scoreError" : 0.015709833548820006,
+            "scoreConfidence" : [
+                2.4733242538958637,
+                2.5047439209935036
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.4584926013988295,
+                "50.0" : 2.4917337719692574,
+                "90.0" : 2.515664321019905,
+                "95.0" : 2.5193395251764628,
+                "99.0" : 2.519492400625107,
+                "99.9" : 2.519492400625107,
+                "99.99" : 2.519492400625107,
+                "99.999" : 2.519492400625107,
+                "99.9999" : 2.519492400625107,
+                "100.0" : 2.519492400625107
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    2.495513480400047,
+                    2.4721786556302385,
+                    2.473435336373889,
+                    2.4998642846013968,
+                    2.4879540635384676,
+                    2.4805556248140124,
+                    2.508729185329011,
+                    2.5164348916522266,
+                    2.462690383395238,
+                    2.4654239084902905
+                ],
+                [
+                    2.4964864761642356,
+                    2.469378279315155,
+                    2.507789294253844,
+                    2.503513607338041,
+                    2.4962167582249526,
+                    2.4875586959295104,
+                    2.4584926013988295,
+                    2.4981721132809516,
+                    2.519492400625107,
+                    2.480801708138223
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.jsonSerialization1mb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.22722637770232765,
+            "scoreError" : 0.014417911212373017,
+            "scoreConfidence" : [
+                0.21280846648995463,
+                0.24164428891470066
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.17615162277874413,
+                "50.0" : 0.23262631090276192,
+                "90.0" : 0.24314280473142283,
+                "95.0" : 0.24438646650105217,
+                "99.0" : 0.24443649909788495,
+                "99.9" : 0.24443649909788495,
+                "99.99" : 0.24443649909788495,
+                "99.999" : 0.24443649909788495,
+                "99.9999" : 0.24443649909788495,
+                "100.0" : 0.24443649909788495
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    0.2371327049885934,
+                    0.22990145867666903,
+                    0.2080104829445849,
+                    0.2251873728211758,
+                    0.22656333395870887,
+                    0.2000345525738811,
+                    0.17615162277874413,
+                    0.2188065574980351,
+                    0.24443649909788495,
+                    0.2314450391130338
+                ],
+                [
+                    0.2397900703388472,
+                    0.24050542286316362,
+                    0.2170639450476074,
+                    0.23386340399487743,
+                    0.23369906608793523,
+                    0.23155355571758865,
+                    0.233943610519041,
+                    0.2434358471612294,
+                    0.23789326626795437,
+                    0.23510974159699746
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.jsonSerializationSmall",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 28.50549041969167,
+            "scoreError" : 0.30736141303169906,
+            "scoreConfidence" : [
+                28.198129006659972,
+                28.81285183272337
+            ],
+            "scorePercentiles" : {
+                "0.0" : 27.682581496754388,
+                "50.0" : 28.651713650540906,
+                "90.0" : 28.905420461497652,
+                "95.0" : 29.14540343038591,
+                "99.0" : 29.157368347678144,
+                "99.9" : 29.157368347678144,
+                "99.99" : 29.157368347678144,
+                "99.999" : 29.157368347678144,
+                "99.9999" : 29.157368347678144,
+                "100.0" : 29.157368347678144
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    28.179245326252506,
+                    28.719905118532022,
+                    28.68440869750191,
+                    28.764119479633415,
+                    28.791574598474696,
+                    28.71206917828936,
+                    28.289889259534057,
+                    29.157368347678144,
+                    28.66405675379153,
+                    28.918070001833538
+                ],
+                [
+                    27.682581496754388,
+                    28.05271327760228,
+                    28.28070642125118,
+                    27.990416348506635,
+                    28.41018731949792,
+                    28.270367291843034,
+                    28.653769590816353,
+                    28.64965771026546,
+                    28.677375684173313,
+                    28.561326491601626
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.payload100kb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 3.0785967701394674,
+            "scoreError" : 0.12282217570773404,
+            "scoreConfidence" : [
+                2.9557745944317335,
+                3.2014189458472013
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.5076482591182176,
+                "50.0" : 3.1173870633997414,
+                "90.0" : 3.150789550116071,
+                "95.0" : 3.1532721735417866,
+                "99.0" : 3.1532946451586805,
+                "99.9" : 3.1532946451586805,
+                "99.99" : 3.1532946451586805,
+                "99.999" : 3.1532946451586805,
+                "99.9999" : 3.1532946451586805,
+                "100.0" : 3.1532946451586805
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    3.131522956383722,
+                    3.1073950123323986,
+                    3.132288585773459,
+                    3.1163699353332235,
+                    3.1184901876192748,
+                    3.120955442452648,
+                    3.127532667965041,
+                    3.1182079091565607,
+                    3.1189920209998223,
+                    3.1103020045233283
+                ],
+                [
+                    3.1528452128208055,
+                    3.1532946451586805,
+                    3.0961953614561115,
+                    3.11404345257664,
+                    3.0784319846795882,
+                    3.090906367900124,
+                    3.116566217642922,
+                    3.1227710382732576,
+                    2.937176140623526,
+                    2.5076482591182176
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.payload1mb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.27850303318309133,
+            "scoreError" : 0.019534214177845493,
+            "scoreConfidence" : [
+                0.2589688190052458,
+                0.29803724736093684
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.24066830209618886,
+                "50.0" : 0.2778767347868533,
+                "90.0" : 0.30647464298815386,
+                "95.0" : 0.31163948802239966,
+                "99.0" : 0.3118912152274867,
+                "99.9" : 0.3118912152274867,
+                "99.99" : 0.3118912152274867,
+                "99.999" : 0.3118912152274867,
+                "99.9999" : 0.3118912152274867,
+                "100.0" : 0.3118912152274867
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    0.2780526024601052,
+                    0.301574873861384,
+                    0.299720079826001,
+                    0.27620039807655705,
+                    0.3030363897498254,
+                    0.30245994940666027,
+                    0.3118912152274867,
+                    0.3068566711257459,
+                    0.2828172968572049,
+                    0.26965376215897674
+                ],
+                [
+                    0.29132235574054755,
+                    0.2777008671136014,
+                    0.24066830209618886,
+                    0.24631384014472574,
+                    0.2508316443140955,
+                    0.25082455077700433,
+                    0.2948915095335129,
+                    0.258640342771893,
+                    0.2547594638371163,
+                    0.2718445485831943
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.payloadEmpty",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 29.700015024084365,
+            "scoreError" : 1.0702956021778243,
+            "scoreConfidence" : [
+                28.62971942190654,
+                30.77031062626219
+            ],
+            "scorePercentiles" : {
+                "0.0" : 24.761794993903816,
+                "50.0" : 30.039662941807613,
+                "90.0" : 30.317060561767022,
+                "95.0" : 30.410978941185263,
+                "99.0" : 30.415914209867285,
+                "99.9" : 30.415914209867285,
+                "99.99" : 30.415914209867285,
+                "99.999" : 30.415914209867285,
+                "99.9999" : 30.415914209867285,
+                "100.0" : 30.415914209867285
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    24.761794993903816,
+                    28.756634451600284,
+                    29.808753009514135,
+                    29.706030989602713,
+                    29.39507344731277,
+                    29.786920485997967,
+                    29.94046865535678,
+                    29.713291850391954,
+                    29.67028772443301,
+                    29.658383479375267
+                ],
+                [
+                    30.30469945342172,
+                    30.317208836226868,
+                    30.315726091628413,
+                    30.24550327735709,
+                    30.13885722825845,
+                    30.307791915385874,
+                    30.210307168332484,
+                    30.415914209867285,
+                    30.26575131832167,
+                    30.280901895398756
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.routes10",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 28.651104822620958,
+            "scoreError" : 0.530669458985997,
+            "scoreConfidence" : [
+                28.12043536363496,
+                29.181774281606955
+            ],
+            "scorePercentiles" : {
+                "0.0" : 26.964970314574607,
+                "50.0" : 28.91473406085729,
+                "90.0" : 29.031200433475938,
+                "95.0" : 29.120718086334723,
+                "99.0" : 29.125361724751652,
+                "99.9" : 29.125361724751652,
+                "99.99" : 29.125361724751652,
+                "99.999" : 29.125361724751652,
+                "99.9999" : 29.125361724751652,
+                "100.0" : 29.125361724751652
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    27.301700542837843,
+                    28.71528966582646,
+                    28.7751601613921,
+                    28.810554814889656,
+                    29.002385627366685,
+                    28.814270331047997,
+                    28.98130264621809,
+                    28.966434362361333,
+                    29.125361724751652,
+                    28.932812699922366
+                ],
+                [
+                    27.641882279384223,
+                    28.89665542179221,
+                    26.964970314574607,
+                    29.032488956413054,
+                    29.017549556932234,
+                    28.666898502132714,
+                    28.941972220910866,
+                    28.97074201734941,
+                    29.01960372704189,
+                    28.44406087927393
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.routes100",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 23.732412491052024,
+            "scoreError" : 0.7832675657972213,
+            "scoreConfidence" : [
+                22.949144925254803,
+                24.515680056849245
+            ],
+            "scorePercentiles" : {
+                "0.0" : 20.6344545849174,
+                "50.0" : 23.845115083100666,
+                "90.0" : 24.46085894082054,
+                "95.0" : 24.53853792782824,
+                "99.0" : 24.54237835040825,
+                "99.9" : 24.54237835040825,
+                "99.99" : 24.54237835040825,
+                "99.999" : 24.54237835040825,
+                "99.9999" : 24.54237835040825,
+                "100.0" : 24.54237835040825
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    23.782489310042475,
+                    23.258794482407687,
+                    23.757637819360514,
+                    23.486755956438266,
+                    23.84895231452863,
+                    23.960018404947864,
+                    23.8777388491229,
+                    23.721452966880534,
+                    23.55040409323402,
+                    23.841277851672704
+                ],
+                [
+                    24.4184603189327,
+                    24.414958581677418,
+                    24.398333832642024,
+                    24.54237835040825,
+                    23.581158696730476,
+                    22.325807799140502,
+                    20.6344545849174,
+                    24.380293315366057,
+                    24.40131239378195,
+                    24.465569898808077
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.routes1000",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 8.0608104471953,
+            "scoreError" : 0.08153069887396977,
+            "scoreConfidence" : [
+                7.979279748321329,
+                8.142341146069269
+            ],
+            "scorePercentiles" : {
+                "0.0" : 7.765735007745433,
+                "50.0" : 8.073212628667726,
+                "90.0" : 8.183663755230866,
+                "95.0" : 8.188358944577946,
+                "99.0" : 8.188541032987892,
+                "99.9" : 8.188541032987892,
+                "99.99" : 8.188541032987892,
+                "99.999" : 8.188541032987892,
+                "99.9999" : 8.188541032987892,
+                "100.0" : 8.188541032987892
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    7.998499470323181,
+                    8.084669482464477,
+                    8.18489926478897,
+                    8.113149269389012,
+                    8.096858040507247,
+                    8.00956561917358,
+                    8.079241451535918,
+                    8.1299102022401,
+                    8.027691241666918,
+                    7.765735007745433
+                ],
+                [
+                    8.064993156787006,
+                    8.188541032987892,
+                    7.967239558993273,
+                    8.065593493650002,
+                    7.96667563665888,
+                    8.068223807319018,
+                    8.078201450016435,
+                    8.172544169207935,
+                    8.063551202840147,
+                    8.09042638561057
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.routes10000",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.8650817144163192,
+            "scoreError" : 0.03987539871745415,
+            "scoreConfidence" : [
+                0.825206315698865,
+                0.9049571131337734
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.7430496911512172,
+                "50.0" : 0.8746056829888311,
+                "90.0" : 0.9135920759125831,
+                "95.0" : 0.9284415343004347,
+                "99.0" : 0.9292070865867038,
+                "99.9" : 0.9292070865867038,
+                "99.99" : 0.9292070865867038,
+                "99.999" : 0.9292070865867038,
+                "99.9999" : 0.9292070865867038,
+                "100.0" : 0.9292070865867038
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    0.8219252315358185,
+                    0.8434947605851395,
+                    0.8633974291680766,
+                    0.8938239737814522,
+                    0.8387760033203625,
+                    0.7430496911512172,
+                    0.8720196114397962,
+                    0.8950556780571935,
+                    0.9292070865867038,
+                    0.9098974167261671
+                ],
+                [
+                    0.8951795364811614,
+                    0.8852083039200964,
+                    0.8030372276406341,
+                    0.8410922597184312,
+                    0.8320286782810049,
+                    0.877191754537866,
+                    0.8288257375249533,
+                    0.9138960408613227,
+                    0.9036714756350595,
+                    0.9108563913739269
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.staticFile100kb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 3.1535743881730016,
+            "scoreError" : 0.056844822822719146,
+            "scoreConfidence" : [
+                3.0967295653502824,
+                3.210419210995721
+            ],
+            "scorePercentiles" : {
+                "0.0" : 2.897766596225295,
+                "50.0" : 3.1749185458564906,
+                "90.0" : 3.192034736752276,
+                "95.0" : 3.1994671793513367,
+                "99.0" : 3.199844077309717,
+                "99.9" : 3.199844077309717,
+                "99.99" : 3.199844077309717,
+                "99.999" : 3.199844077309717,
+                "99.9999" : 3.199844077309717,
+                "100.0" : 3.199844077309717
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    3.1806839250407783,
+                    3.1776398012851472,
+                    3.1923061181421115,
+                    3.1326347852232086,
+                    2.897766596225295,
+                    3.1638534182363567,
+                    3.189339968942374,
+                    3.1721972904278335,
+                    3.189592304243756,
+                    3.1861210442737407
+                ],
+                [
+                    3.145106133139068,
+                    3.167632883678205,
+                    3.1456374151168385,
+                    3.152294224777327,
+                    3.1861789438815777,
+                    3.179780513507459,
+                    3.13090587476883,
+                    3.199844077309717,
+                    3.183339709569687,
+                    3.0986327356707224
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.35",
+        "benchmark" : "javalin.performance.JavalinBenchmark.staticFile1mb",
+        "mode" : "thrpt",
+        "threads" : 4,
+        "forks" : 2,
+        "jvm" : "/usr/lib/jvm/temurin-17-jdk-amd64/bin/java",
+        "jvmArgs" : [
+            "-Dforks=2",
+            "-DiterationTime=1000",
+            "-Diterations=10",
+            "-Dmode=benchmark",
+            "-DprofileName",
+            "-DresultFormat=json",
+            "-Dthreads=4",
+            "-Dversion=6.6.0",
+            "-Dfile.encoding=UTF-8",
+            "-Duser.country",
+            "-Duser.language=en",
+            "-Duser.variant"
+        ],
+        "jdkVersion" : "17.0.21.1",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "17.0.21.1+2",
+        "warmupIterations" : 10,
+        "warmupTime" : "1000 ms",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 10,
+        "measurementTime" : "1000 ms",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 0.3213360798708945,
+            "scoreError" : 0.016135606590776633,
+            "scoreConfidence" : [
+                0.3052004732801179,
+                0.33747168646167114
+            ],
+            "scorePercentiles" : {
+                "0.0" : 0.26489737066400154,
+                "50.0" : 0.3247811638164565,
+                "90.0" : 0.33993227144730437,
+                "95.0" : 0.3408332081820601,
+                "99.0" : 0.3408722605986327,
+                "99.9" : 0.3408722605986327,
+                "99.99" : 0.3408722605986327,
+                "99.999" : 0.3408722605986327,
+                "99.9999" : 0.3408722605986327,
+                "100.0" : 0.3408722605986327
+            },
+            "scoreUnit" : "ops/ms",
+            "rawData" : [
+                [
+                    0.32357747530018877,
+                    0.32524882341501127,
+                    0.3323848834660899,
+                    0.3162714459844139,
+                    0.33097390566753276,
+                    0.33530690197513224,
+                    0.31444777632790155,
+                    0.3092866188032013,
+                    0.3400912122671811,
+                    0.3316090195305082
+                ],
+                [
+                    0.32431350421790167,
+                    0.2928499111004782,
+                    0.26489737066400154,
+                    0.3177398540781438,
+                    0.3290286360217439,
+                    0.33792990808032136,
+                    0.3206554314976965,
+                    0.30073485435339675,
+                    0.3408722605986327,
+                    0.3385018040684138
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+
